@@ -71,6 +71,7 @@
             z-index: 10;
         }
 
+        /* HUD Reorganization */
         #score-board {
             position: absolute;
             top: 0; left: 0;
@@ -79,42 +80,76 @@
             box-sizing: border-box;
             color: #fff;
             text-shadow: 3px 3px 0 #000;
-            font-size: 16px;
             text-align: right;
             display: flex;
             flex-direction: column;
             align-items: flex-end;
         }
 
+        #score-val { font-size: 24px; color: #fff; margin-bottom: 5px; }
+        
+        #mult-container {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        
+        #mult-badge {
+            background: #222;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #ff0;
+            box-shadow: 0 0 5px #000;
+            margin-right: 10px;
+            z-index: 2;
+        }
+
         #multiplier-bar {
-            width: 200px;
-            height: 20px;
+            width: 150px;
+            height: 15px;
             background: #333;
             border: 2px solid #fff;
-            margin-top: 10px;
             position: relative;
             box-shadow: 0 0 5px #000;
+            transform: skewX(-20deg); /* Style */
         }
 
         #multiplier-fill {
             height: 100%;
             width: 0%;
-            background: #00ff00;
-            transition: width 0.1s, background-color 0.2s;
+            background: #00ff00; 
+            transition: width 0.1s linear, background-color 0.2s;
+        }
+
+        #streak-text {
+            color: #aaa;
+            font-size: 10px;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         /* Thunder Styles */
-        .thunder-ready #multiplier-fill {
+        body.thunder-ready #multiplier-fill {
             background: #00ffff !important;
             box-shadow: 0 0 15px #00ffff;
             animation: pulse-bar 0.5s infinite alternate;
         }
-        .thunder-active #multiplier-fill {
+        body.thunder-active #multiplier-fill {
             background: #ffffff !important;
             box-shadow: 0 0 20px #00ffff;
         }
-        .thunder-active #score-board {
-            text-shadow: 0 0 10px #00ffff;
+        body.thunder-active #mult-badge {
+            border-color: #00ffff;
+            color: #00ffff;
+            box-shadow: 0 0 15px #00ffff;
+            background: #000;
         }
 
         @keyframes pulse-bar {
@@ -122,9 +157,10 @@
             to { box-shadow: 0 0 20px #00ffff; }
         }
 
+        /* Thunder Popup - Lowered */
         #thunder-popup {
             position: absolute;
-            bottom: 20%;
+            bottom: 50px; /* Below highway area */
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
@@ -132,14 +168,19 @@
             flex-direction: column;
             align-items: center;
             animation: float 1s infinite alternate;
+            z-index: 20;
+            pointer-events: none;
         }
-        @keyframes float { from{transform:translate(-50%, 0);} to{transform:translate(-50%, -10px);} }
+        @keyframes float { from{transform:translate(-50%, 0);} to{transform:translate(-50%, -5px);} }
 
         .thunder-text {
             color: #00ffff;
-            font-size: 24px;
+            font-size: 18px;
             text-shadow: 0 0 10px #00ffff;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border: 1px solid #00ffff;
         }
         
         .space-key-icon {
@@ -147,8 +188,8 @@
             border-radius: 4px;
             padding: 5px 20px;
             color: #fff;
-            font-size: 14px;
-            background: rgba(255,255,255,0.1);
+            font-size: 12px;
+            background: rgba(0, 255, 255, 0.2);
             box-shadow: 0 0 10px #00ffff;
         }
 
@@ -161,11 +202,7 @@
             z-index: 100;
         }
 
-        #combo-text {
-            color: #ff0;
-            margin-top: 5px;
-        }
-
+        /* Mobile Controls */
         #touch-controls {
             position: absolute;
             bottom: 0; left: 0; width: 100%; height: 35vh;
@@ -185,7 +222,7 @@
             background: linear-gradient(to top, rgba(255,255,255,0.4), transparent);
         }
 
-        /* UI Screens */
+        /* Screens */
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -200,38 +237,59 @@
             transition: opacity 0.5s;
         }
 
+        /* Main Title Flair */
         h1 {
             color: #ff00ff;
             text-shadow: 4px 4px #00ffff;
-            font-size: 40px;
+            font-size: 50px;
             text-align: center;
-            line-height: 1.5;
+            line-height: 1.2;
             margin-bottom: 40px;
+            transform: skewX(-10deg);
+            animation: title-bob 3s ease-in-out infinite;
+        }
+        @keyframes title-bob {
+            0%, 100% { transform: skewX(-10deg) translateY(0) rotate(0deg); }
+            50% { transform: skewX(-10deg) translateY(-10px) rotate(1deg); }
         }
 
+        /* Button Rockstar Style */
         .btn {
             background: #000;
-            border: 4px solid #fff;
+            border: 3px solid #fff;
             color: #fff;
-            padding: 20px 30px;
+            padding: 20px 40px;
             font-family: 'Press Start 2P', cursive;
-            font-size: 14px;
+            font-size: 16px;
             cursor: pointer;
-            margin: 10px;
-            width: 280px;
+            margin: 15px;
+            width: 300px;
             text-align: center;
-            transition: transform 0.1s;
+            transition: all 0.1s;
             text-transform: uppercase;
+            box-shadow: 5px 5px 0px #00ffff;
+            transform: skewX(-10deg);
+            position: relative;
+            overflow: hidden;
         }
-        .btn:hover { transform: scale(1.05); background: #222; border-color: #ff00ff; }
-        
+        .btn:hover { 
+            transform: skewX(-10deg) scale(1.05) translate(-2px, -2px); 
+            box-shadow: 7px 7px 0px #ff00ff;
+            background: #222; 
+            border-color: #ff00ff; 
+        }
+        .btn:active {
+            transform: skewX(-10deg) scale(0.98);
+            box-shadow: 2px 2px 0px #ff00ff;
+        }
+
         #file-input { display: none; }
 
         /* Menu Specifics */
         #main-menu-container {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 10px;
         }
 
         /* Library List */
@@ -256,6 +314,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         .song-item {
@@ -361,6 +420,17 @@
         .stars { color: #ffd700; font-size: 40px; margin: 20px 0; text-shadow: 2px 2px 0 #000; letter-spacing: 5px; }
         .grade { font-size: 60px; color: #00ff00; text-shadow: 4px 4px 0 #000; margin-bottom: 20px; }
 
+        /* Random Lightning on Menu */
+        .menu-flash {
+            position: absolute;
+            top: 0; bottom: 0; width: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 50px 20px rgba(255, 255, 255, 0.8);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
         /* Scanlines */
         .scanlines {
             background: linear-gradient(
@@ -388,11 +458,20 @@
     </div>
     <div class="scanlines"></div>
 
+    <!-- Random Menu Lightning Elements -->
+    <div id="flash-left" class="menu-flash" style="left: 10%;"></div>
+    <div id="flash-right" class="menu-flash" style="right: 10%;"></div>
+
     <div id="ui-layer">
         <div id="score-board">
-            SCORE: <span id="score">0</span>
-            <div id="combo-text">COMBO: <span id="combo">0</span>x</div>
-            <div id="multiplier-bar"><div id="multiplier-fill"></div></div>
+            <div id="score-val">0</div>
+            
+            <div id="mult-container">
+                <div id="mult-badge">1x</div>
+                <div id="multiplier-bar"><div id="multiplier-fill"></div></div>
+            </div>
+            
+            <div id="streak-text">STREAK: <span id="streak">0</span></div>
         </div>
         
         <div id="thunder-popup">
@@ -471,9 +550,9 @@ const LANE_WIDTH = 1.2;
 const HIT_WINDOW = 0.140; 
 const NOTE_SPEED = 30; 
 const KEYS = { 'KeyD': 0, 'KeyF': 1, 'KeyJ': 2, 'KeyK': 3, 'KeyL': 4 };
-const NOTES_PER_MULTIPLIER = 20; // Harder difficulty (20 notes per level)
-const TIME_TO_FILL_THUNDER = 30; // Seconds of 4x needed
-const THUNDER_DURATION = 15;     // Seconds of 8x
+const NOTES_PER_MULTIPLIER = 20; // Harder difficulty
+const TIME_TO_FILL_THUNDER = 30; // 30s of 4x to fill bar
+const THUNDER_DURATION = 15;     // 15s duration
 
 // Hardcoded Server Song List
 const SERVER_SONGS = [
@@ -503,6 +582,9 @@ let isThunderReady = false;
 let isThunderActive = false;
 let thunderTimeRemaining = 0;
 
+// Menu Effects
+let menuFlashInterval = null;
+
 // Three.js Globals
 let scene, camera, renderer;
 let fretBoardGroup, notesGroup, flamesGroup;
@@ -512,10 +594,37 @@ let hitMarkers = [], flames = [];
 let localLibrary = [];
 let serverLibraryCache = []; 
 
+// --- Menu Flair Logic ---
+function startMenuEffects() {
+    if(menuFlashInterval) clearInterval(menuFlashInterval);
+    
+    const flash = () => {
+        const side = Math.random() > 0.5 ? 'flash-left' : 'flash-right';
+        const el = document.getElementById(side);
+        el.style.opacity = 0.8;
+        el.style.top = Math.random() * 50 + '%';
+        
+        setTimeout(() => el.style.opacity = 0, 100);
+        setTimeout(() => el.style.opacity = 0.5, 150);
+        setTimeout(() => el.style.opacity = 0, 300);
+
+        // Next flash in 5-10s
+        const nextTime = 5000 + Math.random() * 5000;
+        menuFlashInterval = setTimeout(flash, nextTime);
+    };
+    
+    flash();
+}
+
+function stopMenuEffects() {
+    if(menuFlashInterval) clearTimeout(menuFlashInterval);
+    document.getElementById('flash-left').style.opacity = 0;
+    document.getElementById('flash-right').style.opacity = 0;
+}
+
 // --- Zip & Library Handling ---
 
 const LibraryManager = {
-    // Called when clicking "Library"
     loadLibraryView: async function() {
         const listEl = document.getElementById('library-list');
         const loader = document.getElementById('loading-overlay');
@@ -946,6 +1055,8 @@ function startGame(notes) {
     notesHitCount = 0; score = 0; combo = 0; maxCombo = 0; multiplier = 1;
     accumulated4xTime = 0; isThunderReady = false; isThunderActive = false; thunderTimeRemaining = 0;
     
+    stopMenuEffects(); // Stop lightning effects in game
+    
     // UI Reset
     document.body.classList.remove('thunder-active', 'thunder-ready');
     document.getElementById('thunder-popup').style.display = 'none';
@@ -1120,13 +1231,13 @@ function breakCombo() {
 }
 
 function updateUI() {
-    document.getElementById('score').innerText = score;
-    document.getElementById('combo').innerText = combo;
+    document.getElementById('score-val').innerText = score;
+    document.getElementById('mult-badge').innerText = multiplier + "x";
+    document.getElementById('streak').innerText = combo;
     const el = document.getElementById('multiplier-fill');
     
     if (isThunderActive) {
         // Handled in updateGame loop for smooth draining
-        document.getElementById('score-board').style.color = '#fff'; // Reset text color, handled by CSS class
     } else if (isThunderReady) {
         el.style.width = '100%';
     } else if (multiplier === 4) {
@@ -1182,6 +1293,7 @@ document.getElementById('file-input').addEventListener('change', (e) => {
 document.getElementById('btn-restart').addEventListener('click', () => {
     document.getElementById('results-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
+    startMenuEffects(); // Restart main menu visuals
 });
 
 // Input
@@ -1205,6 +1317,7 @@ const tArea = document.getElementById('touch-controls');
 tArea.addEventListener('touchstart', e => { e.preventDefault(); for(let i=0; i<e.changedTouches.length; i++) { const t = e.changedTouches[i]; const el = document.elementFromPoint(t.clientX, t.clientY); if(el && el.dataset.lane) { el.classList.add('active'); handleInput(parseInt(el.dataset.lane), true); } } }, {passive:false});
 tArea.addEventListener('touchend', () => { const els = document.querySelectorAll('.touch-zone'); els.forEach((el, idx) => { el.classList.remove('active'); handleInput(idx, false); }); });
 
+startMenuEffects(); // Init effect
 initGraphics();
 window.addEventListener('resize', () => {
     const container = document.getElementById('game-canvas-container');
