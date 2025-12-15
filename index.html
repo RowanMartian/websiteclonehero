@@ -216,7 +216,7 @@
         .song-thumb {
             width: 60px;
             height: 60px;
-            background: #000;
+            background: #222;
             margin-right: 15px;
             background-size: cover;
             background-position: center;
@@ -231,6 +231,9 @@
             font-size: 14px;
             color: #fff;
             margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .song-source {
             font-size: 10px;
@@ -277,6 +280,20 @@
             align-items: center;
             justify-content: center;
             color: #0f0;
+        }
+        
+        #progress-bar {
+            width: 300px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #fff;
+            margin-top: 20px;
+        }
+        #progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #0f0;
+            transition: width 0.1s;
         }
 
         /* Results Screen */
@@ -341,7 +358,7 @@
     <div id="library-view" class="overlay-screen">
         <h2 style="margin-top: 20px; color: #0ff;">SONG LIBRARY</h2>
         <div id="library-list">
-            <div style="text-align: center; margin-top: 50px; color: #666;">No songs loaded.</div>
+            <!-- List Items Here -->
         </div>
         <button class="btn" id="btn-back-main" style="margin-bottom: 20px;">Back</button>
     </div>
@@ -359,7 +376,8 @@
 
     <!-- Loading Overlay -->
     <div id="loading-overlay">
-        <h2 id="loading-text">LOADING...</h2>
+        <h2 id="loading-text">LOADING LIBRARY...</h2>
+        <div id="progress-bar"><div id="progress-fill"></div></div>
     </div>
 
     <!-- Results Screen -->
@@ -396,7 +414,6 @@ const SERVER_SONGS = [
     "Hotelcalifornia.zip",
     "Iris.zip",
     "Layla.zip",
-    "Marty.zip",
     "Shouldistay.zip",
     "Stairwaytoheaven.zip",
     "Talkinginyoursleep.zip",
@@ -416,45 +433,83 @@ let fretBoardGroup, notesGroup, flamesGroup;
 let hitMarkers = [], flames = [];
 
 // Local Library State (In-memory)
+// Each item: { id, name, zip, art, source, zipBlob }
 let localLibrary = [];
+let serverLibraryCache = []; // Stores preloaded metadata for server songs
 
 // --- Zip & Library Handling ---
 
 const LibraryManager = {
     // Called when clicking "Library"
-    loadLibraryView: function() {
+    // Scans server songs if not already cached
+    loadLibraryView: async function() {
         const listEl = document.getElementById('library-list');
-        listEl.innerHTML = '';
+        const loader = document.getElementById('loading-overlay');
+        const pFill = document.getElementById('progress-fill');
+        const lText = document.getElementById('loading-text');
         
-        // 1. Render Local Songs
-        localLibrary.forEach(song => {
-            const el = this.createSongElement(song, true);
-            listEl.appendChild(el);
-        });
+        listEl.innerHTML = '';
 
-        // 2. Render Server Songs (Hardcoded List)
-        SERVER_SONGS.forEach(filename => {
-            // We create a "Lazy" element. We don't know the Artist/Title yet because we haven't downloaded it.
-            // We show the filename first.
-            // OPTIONAL: If you want to show Metadata immediately, you'd need a separate JSON index file on the server.
-            // Since we can't do that, we show filename, and parse metadata on Play.
-            const el = this.createSongElement({
-                name: filename.replace('.zip', ''),
-                url: filename,
-                source: 'SERVER'
-            }, false);
+        // If we haven't scanned server songs yet, do it now
+        if (serverLibraryCache.length === 0) {
+            loader.style.display = 'flex';
+            lText.innerText = "SCANNING LIBRARY...";
+            
+            let loadedCount = 0;
+            const total = SERVER_SONGS.length;
+
+            for (const filename of SERVER_SONGS) {
+                try {
+                    // Fetch Blob
+                    lText.innerText = `LOADING: ${filename}`;
+                    const response = await fetch(filename);
+                    if(!response.ok) throw new Error("404");
+                    const blob = await response.blob();
+                    
+                    // Parse Zip Metadata
+                    const zip = await JSZip.loadAsync(blob);
+                    const meta = await this.extractMetadata(zip);
+                    
+                    // Store complete blob for playback later to avoid re-download
+                    serverLibraryCache.push({
+                        name: meta.title || filename.replace('.zip',''),
+                        art: meta.artUrl,
+                        zip: zip, 
+                        source: 'SERVER'
+                    });
+
+                } catch (e) {
+                    console.warn(`Failed to load ${filename}:`, e);
+                }
+                
+                loadedCount++;
+                pFill.style.width = `${(loadedCount / total) * 100}%`;
+            }
+            loader.style.display = 'none';
+        }
+
+        // Combine Lists
+        const allSongs = [...localLibrary, ...serverLibraryCache];
+
+        if (allSongs.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; margin-top:50px; color:#666;">No songs found on server.</div>';
+            return;
+        }
+
+        allSongs.forEach(song => {
+            const el = this.createSongElement(song);
             listEl.appendChild(el);
         });
     },
 
-    createSongElement: function(song, isLocal) {
+    createSongElement: function(song) {
         const el = document.createElement('div');
         el.className = 'song-item';
         
         const thumb = document.createElement('div');
         thumb.className = 'song-thumb';
         if(song.art) thumb.style.backgroundImage = `url(${song.art})`;
-        else thumb.style.backgroundColor = '#222'; // placeholder
+        else thumb.style.backgroundColor = '#222';
         
         const info = document.createElement('div');
         info.className = 'song-info';
@@ -465,7 +520,7 @@ const LibraryManager = {
         
         const source = document.createElement('div');
         source.className = 'song-source';
-        source.innerText = song.source || (isLocal ? "LOCAL FILE" : "SERVER");
+        source.innerText = song.source;
 
         info.appendChild(title);
         info.appendChild(source);
@@ -473,8 +528,7 @@ const LibraryManager = {
         el.appendChild(info);
         
         el.onclick = () => {
-            if(isLocal) this.playLocalSong(song);
-            else this.downloadAndPlay(song.url);
+            this.playSong(song.zip, song.art);
         };
         return el;
     },
@@ -485,7 +539,6 @@ const LibraryManager = {
             const zip = await JSZip.loadAsync(file);
             const meta = await this.extractMetadata(zip); // Reuse extraction logic
             
-            // Store in Local Library
             localLibrary.push({
                 id: Date.now() + Math.random(),
                 name: meta.title || file.name.replace(/\.zip$/i, ''),
@@ -510,7 +563,7 @@ const LibraryManager = {
     extractMetadata: async function(zip) {
         let imageFile = null;
         let iniFile = null;
-        let chartFile = null; // Also check chart for name if INI missing
+        let chartFile = null; 
 
         zip.forEach((relativePath, zipEntry) => {
             if (zipEntry.dir || zipEntry.name.startsWith('__MACOSX')) return;
@@ -559,37 +612,13 @@ const LibraryManager = {
         return { title: songTitle, artUrl: artUrl };
     },
 
-    playLocalSong: async function(song) {
-        this.processPlayableZip(song.zip, song.art);
-    },
-
-    downloadAndPlay: async function(url) {
+    // Plays a song that is already loaded as a JSZip object
+    playSong: async function(zip, artUrl) {
         const loader = document.getElementById('loading-overlay');
         const loadText = document.getElementById('loading-text');
-        
+        const pFill = document.getElementById('progress-fill');
         loader.style.display = 'flex';
-        loadText.innerText = "DOWNLOADING...";
-
-        try {
-            const response = await fetch(url);
-            if(!response.ok) throw new Error("Could not download file.");
-            const blob = await response.blob();
-            const zip = await JSZip.loadAsync(blob);
-            
-            // Extract Metadata now to get nice background
-            const meta = await this.extractMetadata(zip);
-            
-            this.processPlayableZip(zip, meta.artUrl);
-        } catch (e) {
-            loader.style.display = 'none';
-            alert("Error: " + e.message);
-        }
-    },
-
-    processPlayableZip: async function(zip, artUrl) {
-        const loader = document.getElementById('loading-overlay');
-        const loadText = document.getElementById('loading-text');
-        loader.style.display = 'flex';
+        pFill.style.width = '100%';
         
         try {
             let chartFile = null;
