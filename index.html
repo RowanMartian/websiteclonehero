@@ -20,7 +20,7 @@
             touch-action: none;
         }
 
-        /* Background Art Layer - Full Screen */
+        /* Background Art Layer */
         #bg-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -32,7 +32,6 @@
             transition: opacity 1s, background-image 0.5s;
         }
 
-        /* Game Container - Responsive */
         #game-wrapper {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -59,11 +58,9 @@
             }
             #touch-controls { display: none !important; }
             #score-board {
-                width: 600px;
+                width: 560px !important;
                 left: 50% !important;
                 transform: translateX(-50%);
-                padding: 20px 0 !important;
-                width: 560px !important;
             }
         }
 
@@ -129,7 +126,7 @@
             background: linear-gradient(to top, rgba(255,255,255,0.4), transparent);
         }
 
-        /* Screens */
+        /* UI Screens */
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -137,12 +134,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
+            justify-content: center;
             z-index: 30;
             pointer-events: auto;
             color: white;
             transition: opacity 0.5s;
-            padding-top: 40px;
         }
 
         h1 {
@@ -151,8 +147,7 @@
             font-size: 40px;
             text-align: center;
             line-height: 1.5;
-            margin-bottom: 20px;
-            margin-top: 20px;
+            margin-bottom: 40px;
         }
 
         .btn {
@@ -164,6 +159,8 @@
             font-size: 14px;
             cursor: pointer;
             margin: 10px;
+            width: 280px;
+            text-align: center;
             transition: transform 0.1s;
             text-transform: uppercase;
         }
@@ -171,8 +168,24 @@
         
         #file-input { display: none; }
 
-        /* Song Library Styles */
-        #library-container {
+        /* Menu Specifics */
+        #main-menu-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Library List */
+        #library-view {
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding-top: 20px;
+        }
+
+        #library-list {
             width: 90%;
             max-width: 600px;
             flex: 1;
@@ -208,6 +221,7 @@
             background-size: cover;
             background-position: center;
             border: 1px solid #555;
+            flex-shrink: 0;
         }
         .song-info {
             flex: 1;
@@ -215,44 +229,48 @@
         }
         .song-title {
             font-size: 14px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
             color: #fff;
             margin-bottom: 5px;
         }
-        .song-sub {
+        .song-source {
             font-size: 10px;
             color: #888;
         }
-        
-        #drop-zone-msg {
-            text-align: center;
-            color: #666;
-            margin-top: 50px;
-            font-size: 12px;
-            line-height: 2;
-        }
-        
-        #drag-overlay {
+
+        /* Add Song Modal (Drop Zone) */
+        #add-song-modal {
+            display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 255, 0, 0.2);
-            border: 4px dashed #0f0;
-            z-index: 100;
-            pointer-events: none;
-            display: none;
+            background: rgba(0,0,0,0.95);
+            z-index: 40;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+        }
+        
+        #drop-zone {
+            width: 80%;
+            height: 50%;
+            border: 4px dashed #0f0;
+            background: rgba(0, 255, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: #0f0;
-            text-shadow: 2px 2px #000;
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #drop-zone.hover {
+            background: rgba(0, 255, 0, 0.3);
         }
 
+        /* Loading Overlay */
         #loading-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 50;
             display: none;
             flex-direction: column;
@@ -262,7 +280,7 @@
         }
 
         /* Results Screen */
-        #results-screen { display: none; justify-content: center; }
+        #results-screen { display: none; }
         .stat-row { margin: 10px 0; font-size: 18px; text-align: center; }
         .stars { color: #ffd700; font-size: 40px; margin: 20px 0; text-shadow: 2px 2px 0 #000; letter-spacing: 5px; }
         .grade { font-size: 60px; color: #00ff00; text-shadow: 4px 4px 0 #000; margin-bottom: 20px; }
@@ -298,7 +316,6 @@
             <div id="combo-text">COMBO: <span id="combo">0</span>x</div>
             <div id="multiplier-bar"><div id="multiplier-fill"></div></div>
         </div>
-        
         <div id="touch-controls">
             <div class="touch-zone" data-lane="0"></div>
             <div class="touch-zone" data-lane="1"></div>
@@ -308,33 +325,42 @@
         </div>
     </div>
 
-    <!-- Start Screen / Library -->
-    <div id="start-screen" class="overlay-screen">
+    <!-- Main Menu -->
+    <div id="main-menu" class="overlay-screen">
         <h1>WCL HERO</h1>
-        
-        <div id="library-container">
-            <div id="drop-zone-msg">
-                DROP SONG ZIPS HERE<br>
-                (or click "Add Song")
-            </div>
-            <!-- Songs will be injected here -->
+        <div id="main-menu-container">
+            <button class="btn" id="btn-open-library">Library</button>
+            <button class="btn" id="btn-open-add">Add Songs</button>
         </div>
-
-        <button class="btn" id="btn-add">Add Song (.zip)</button>
-        <input type="file" id="file-input" accept=".zip,application/zip,application/x-zip-compressed" multiple>
-        
-        <div style="font-size: 10px; color: #888; margin-top: 10px;">
+        <div style="margin-top: 30px; font-size: 10px; color: #888;">
             KEYS: D F J K L
         </div>
+    </div>
+
+    <!-- Library View -->
+    <div id="library-view" class="overlay-screen">
+        <h2 style="margin-top: 20px; color: #0ff;">SONG LIBRARY</h2>
+        <div id="library-list">
+            <div style="text-align: center; margin-top: 50px; color: #666;">No songs loaded.</div>
+        </div>
+        <button class="btn" id="btn-back-main" style="margin-bottom: 20px;">Back</button>
+    </div>
+
+    <!-- Add Song Modal -->
+    <div id="add-song-modal">
+        <h2 style="color: #0f0; margin-bottom: 20px;">ADD LOCAL SONGS</h2>
+        <div id="drop-zone">
+            DROP ZIP FILES HERE
+        </div>
+        <button class="btn" id="btn-browse">Browse Files</button>
+        <button class="btn" id="btn-close-add" style="margin-top: 20px; border-color: #f00;">Close</button>
+        <input type="file" id="file-input" accept=".zip,application/zip,application/x-zip-compressed" multiple>
     </div>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay">
         <h2 id="loading-text">LOADING...</h2>
     </div>
-
-    <!-- Drag Overlay -->
-    <div id="drag-overlay">DROP TO ADD TO LIBRARY</div>
 
     <!-- Results Screen -->
     <div id="results-screen" class="overlay-screen" style="justify-content: center;">
@@ -345,7 +371,7 @@
         <div class="stat-row">NOTES HIT: <span id="res-hit">0</span> / <span id="res-total">0</span></div>
         <div class="stat-row">PERCENT: <span id="res-percent">0</span>%</div>
         <div class="stat-row">COMBO: <span id="res-combo">0</span></div>
-        <button class="btn" id="btn-restart">Back to Library</button>
+        <button class="btn" id="btn-restart">Back to Menu</button>
     </div>
 
 <script>
@@ -361,6 +387,22 @@ const HIT_WINDOW = 0.140;
 const NOTE_SPEED = 30; 
 const KEYS = { 'KeyD': 0, 'KeyF': 1, 'KeyJ': 2, 'KeyK': 3, 'KeyL': 4 };
 
+// Hardcoded Server Song List
+const SERVER_SONGS = [
+    "Youmightthink.zip",
+    "Babaoriley.zip",
+    "Basketcase.zip",
+    "Goldenbrown.zip",
+    "Hotelcalifornia.zip",
+    "Iris.zip",
+    "Layla.zip",
+    "Marty.zip",
+    "Shouldistay.zip",
+    "Stairwaytoheaven.zip",
+    "Talkinginyoursleep.zip",
+    "Throughthefire.zip"
+];
+
 // Game State
 let isPlaying = false;
 let score = 0, combo = 0, maxCombo = 0, multiplier = 1;
@@ -373,46 +415,90 @@ let scene, camera, renderer;
 let fretBoardGroup, notesGroup, flamesGroup;
 let hitMarkers = [], flames = [];
 
-// Library State
-let songLibrary = [];
+// Local Library State (In-memory)
+let localLibrary = [];
 
 // --- Zip & Library Handling ---
 
 const LibraryManager = {
-    // Stage 1: Fast Scan (Get Metadata only)
-    addSong: async function(file) {
+    // Called when clicking "Library"
+    loadLibraryView: function() {
+        const listEl = document.getElementById('library-list');
+        listEl.innerHTML = '';
+        
+        // 1. Render Local Songs
+        localLibrary.forEach(song => {
+            const el = this.createSongElement(song, true);
+            listEl.appendChild(el);
+        });
+
+        // 2. Render Server Songs (Hardcoded List)
+        SERVER_SONGS.forEach(filename => {
+            // We create a "Lazy" element. We don't know the Artist/Title yet because we haven't downloaded it.
+            // We show the filename first.
+            // OPTIONAL: If you want to show Metadata immediately, you'd need a separate JSON index file on the server.
+            // Since we can't do that, we show filename, and parse metadata on Play.
+            const el = this.createSongElement({
+                name: filename.replace('.zip', ''),
+                url: filename,
+                source: 'SERVER'
+            }, false);
+            listEl.appendChild(el);
+        });
+    },
+
+    createSongElement: function(song, isLocal) {
+        const el = document.createElement('div');
+        el.className = 'song-item';
+        
+        const thumb = document.createElement('div');
+        thumb.className = 'song-thumb';
+        if(song.art) thumb.style.backgroundImage = `url(${song.art})`;
+        else thumb.style.backgroundColor = '#222'; // placeholder
+        
+        const info = document.createElement('div');
+        info.className = 'song-info';
+
+        const title = document.createElement('div');
+        title.className = 'song-title';
+        title.innerText = song.name;
+        
+        const source = document.createElement('div');
+        source.className = 'song-source';
+        source.innerText = song.source || (isLocal ? "LOCAL FILE" : "SERVER");
+
+        info.appendChild(title);
+        info.appendChild(source);
+        el.appendChild(thumb);
+        el.appendChild(info);
+        
+        el.onclick = () => {
+            if(isLocal) this.playLocalSong(song);
+            else this.downloadAndPlay(song.url);
+        };
+        return el;
+    },
+
+    // Process a dropped file to add to local library
+    addLocalSong: async function(file) {
         try {
             const zip = await JSZip.loadAsync(file);
-            let imageFile = null;
-            let iniFile = null;
+            const meta = await this.extractMetadata(zip); // Reuse extraction logic
             
-            // Name from Zip filename (minus extension)
-            const zipName = file.name.replace(/\.zip$/i, '');
-
-            zip.forEach((relativePath, zipEntry) => {
-                if (zipEntry.dir || zipEntry.name.startsWith('__MACOSX')) return;
-                const name = zipEntry.name.toLowerCase();
-                if (name.endsWith('album.jpg') || name.endsWith('album.png')) imageFile = zipEntry;
-                if (name.endsWith('song.ini')) iniFile = zipEntry;
-            });
-
-            // Extract Art
-            let artUrl = null;
-            if(imageFile) {
-                const imgBlob = await imageFile.async("blob");
-                artUrl = URL.createObjectURL(imgBlob);
-            }
-
-            // Create Entry
-            const songEntry = {
+            // Store in Local Library
+            localLibrary.push({
                 id: Date.now() + Math.random(),
-                name: zipName, // Use ZIP name
-                zip: zip, // Store Zip instance for later full load
-                art: artUrl
-            };
-
-            songLibrary.push(songEntry);
-            this.renderLibrary();
+                name: meta.title || file.name.replace(/\.zip$/i, ''),
+                zip: zip,
+                art: meta.artUrl,
+                source: "LOCAL"
+            });
+            
+            // Auto open library
+            document.getElementById('add-song-modal').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('library-view').style.display = 'flex';
+            this.loadLibraryView();
 
         } catch(e) {
             console.error(e);
@@ -420,56 +506,95 @@ const LibraryManager = {
         }
     },
 
-    renderLibrary: function() {
-        const container = document.getElementById('library-container');
-        // Clear default msg if library has items
-        if(songLibrary.length > 0) {
-            container.innerHTML = ''; 
-        } else {
-            container.innerHTML = '<div id="drop-zone-msg">DROP SONG ZIPS HERE<br>(or click "Add Song")</div>';
-            return;
+    // Helper: Extract Title/Artist/Art from a Zip object
+    extractMetadata: async function(zip) {
+        let imageFile = null;
+        let iniFile = null;
+        let chartFile = null; // Also check chart for name if INI missing
+
+        zip.forEach((relativePath, zipEntry) => {
+            if (zipEntry.dir || zipEntry.name.startsWith('__MACOSX')) return;
+            const name = zipEntry.name.toLowerCase();
+            if (name.endsWith('album.jpg') || name.endsWith('album.png')) imageFile = zipEntry;
+            if (name.endsWith('song.ini')) iniFile = zipEntry;
+            if (name.endsWith('.chart')) chartFile = zipEntry;
+        });
+
+        // Extract Art
+        let artUrl = null;
+        if(imageFile) {
+            const imgBlob = await imageFile.async("blob");
+            artUrl = URL.createObjectURL(imgBlob);
         }
 
-        songLibrary.forEach(song => {
-            const el = document.createElement('div');
-            el.className = 'song-item';
-            el.onclick = () => this.playSong(song);
-            
-            const thumb = document.createElement('div');
-            thumb.className = 'song-thumb';
-            if(song.art) thumb.style.backgroundImage = `url(${song.art})`;
-            
-            const info = document.createElement('div');
-            info.className = 'song-info';
-            
-            const title = document.createElement('div');
-            title.className = 'song-title';
-            title.innerText = song.name;
-            
-            const sub = document.createElement('div');
-            sub.className = 'song-sub';
-            sub.innerText = "Ready to Play";
+        // Extract Name
+        let songTitle = "";
+        
+        // Priority 1: INI
+        if (iniFile) {
+            const iniText = await iniFile.async("string");
+            const nameMatch = iniText.match(/^name\s*=\s*(.+)$/m);
+            const artistMatch = iniText.match(/^artist\s*=\s*(.+)$/m);
+            if (nameMatch) {
+                const sName = nameMatch[1].trim();
+                const artist = artistMatch ? artistMatch[1].trim() : "";
+                if (artist) songTitle = `${artist} - ${sName}`;
+                else songTitle = sName;
+            }
+        }
 
-            info.appendChild(title);
-            info.appendChild(sub);
-            el.appendChild(thumb);
-            el.appendChild(info);
-            container.appendChild(el);
-        });
+        // Priority 2: Chart File [Song] section
+        if (!songTitle && chartFile) {
+            const chartText = await chartFile.async("string");
+            const nameMatch = chartText.match(/Name\s*=\s*"(.*?)"/);
+            const artistMatch = chartText.match(/Artist\s*=\s*"(.*?)"/);
+            if(nameMatch) {
+                const sName = nameMatch[1];
+                const artist = artistMatch ? artistMatch[1] : "";
+                if (artist) songTitle = `${artist} - ${sName}`;
+                else songTitle = sName;
+            }
+        }
+
+        return { title: songTitle, artUrl: artUrl };
     },
 
-    // Stage 2: Full Load (Decode Audio & Parse Chart)
-    playSong: async function(song) {
+    playLocalSong: async function(song) {
+        this.processPlayableZip(song.zip, song.art);
+    },
+
+    downloadAndPlay: async function(url) {
+        const loader = document.getElementById('loading-overlay');
+        const loadText = document.getElementById('loading-text');
+        
+        loader.style.display = 'flex';
+        loadText.innerText = "DOWNLOADING...";
+
+        try {
+            const response = await fetch(url);
+            if(!response.ok) throw new Error("Could not download file.");
+            const blob = await response.blob();
+            const zip = await JSZip.loadAsync(blob);
+            
+            // Extract Metadata now to get nice background
+            const meta = await this.extractMetadata(zip);
+            
+            this.processPlayableZip(zip, meta.artUrl);
+        } catch (e) {
+            loader.style.display = 'none';
+            alert("Error: " + e.message);
+        }
+    },
+
+    processPlayableZip: async function(zip, artUrl) {
         const loader = document.getElementById('loading-overlay');
         const loadText = document.getElementById('loading-text');
         loader.style.display = 'flex';
-        loadText.innerText = "DECODING AUDIO...";
-
+        
         try {
             let chartFile = null;
             let audioFile = null;
             let iniFile = null;
-            const zip = song.zip;
 
             zip.forEach((relativePath, zipEntry) => {
                 if (zipEntry.dir || zipEntry.name.startsWith('__MACOSX')) return;
@@ -506,10 +631,9 @@ const LibraryManager = {
 
             // Decode Audio
             if(audioFile) {
-                loadText.innerText = "PROCESSING AUDIO...";
+                loadText.innerText = "DECODING AUDIO...";
                 const audioData = await audioFile.async("arraybuffer");
                 AudioEngine.init();
-                // We use a small timeout to allow UI to render text update
                 await new Promise(r => setTimeout(r, 50));
                 bgmBuffer = await AudioEngine.ctx.decodeAudioData(audioData);
             } else {
@@ -517,17 +641,20 @@ const LibraryManager = {
             }
 
             // Set Background
-            if(song.art) {
-                document.getElementById('bg-layer').style.backgroundImage = `url(${song.art})`;
+            if(artUrl) {
+                document.getElementById('bg-layer').style.backgroundImage = `url(${artUrl})`;
+            } else {
+                document.getElementById('bg-layer').style.backgroundImage = 'none';
             }
 
-            loader.style.display = 'none';
+            document.getElementById('loading-overlay').style.display = 'none';
+            document.getElementById('library-view').style.display = 'none';
+            
             startGame(notes);
 
         } catch (e) {
-            console.error(e);
-            loader.style.display = 'none';
-            alert("Error loading song: " + e.message);
+            document.getElementById('loading-overlay').style.display = 'none';
+            alert("Error loading song data: " + e.message);
         }
     }
 };
@@ -770,8 +897,7 @@ function startGame(notes) {
         note.hit = false; note.missed = false; 
         notesGroup.add(mesh);
     });
-    document.getElementById('start-screen').style.display = 'none';
-    document.getElementById('results-screen').style.display = 'none';
+    
     updateUI();
     if(bgmBuffer) AudioEngine.playBGM();
     else bgmStartTime = AudioEngine.ctx.currentTime + 3.0;
@@ -863,7 +989,57 @@ function updateUI() {
 }
 function gameLoop() { gameLoopId = requestAnimationFrame(gameLoop); updateGame(); renderer.render(scene, camera); }
 
-// --- Event Listeners ---
+// --- UI / Navigation Handlers ---
+
+// Main Menu
+document.getElementById('btn-open-library').addEventListener('click', () => {
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('library-view').style.display = 'flex';
+    LibraryManager.loadLibraryView();
+});
+document.getElementById('btn-open-add').addEventListener('click', () => {
+    document.getElementById('add-song-modal').style.display = 'flex';
+});
+
+// Library
+document.getElementById('btn-back-main').addEventListener('click', () => {
+    document.getElementById('library-view').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+});
+
+// Add Song Modal
+const closeAdd = () => document.getElementById('add-song-modal').style.display = 'none';
+document.getElementById('btn-close-add').addEventListener('click', closeAdd);
+document.getElementById('btn-browse').addEventListener('click', () => document.getElementById('file-input').click());
+
+// Drag & Drop on Modal
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault(); 
+    dropZone.classList.remove('hover');
+    if(e.dataTransfer.items) {
+        [...e.dataTransfer.items].forEach(item => {
+            if (item.kind === 'file') LibraryManager.addLocalSong(item.getAsFile());
+        });
+    }
+});
+
+// File Input
+document.getElementById('file-input').addEventListener('change', (e) => {
+    if(e.target.files.length > 0) {
+        [...e.target.files].forEach(file => LibraryManager.addLocalSong(file));
+    }
+});
+
+// Results
+document.getElementById('btn-restart').addEventListener('click', () => {
+    document.getElementById('results-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+});
+
+// Input
 function handleInput(lane, isDown) {
     if (lane < 0 || lane >= LANES) return;
     const m = hitMarkers[lane];
@@ -874,29 +1050,6 @@ window.addEventListener('keyup', e => { if (KEYS.hasOwnProperty(e.code)) handleI
 const tArea = document.getElementById('touch-controls');
 tArea.addEventListener('touchstart', e => { e.preventDefault(); for(let i=0; i<e.changedTouches.length; i++) { const t = e.changedTouches[i]; const el = document.elementFromPoint(t.clientX, t.clientY); if(el && el.dataset.lane) { el.classList.add('active'); handleInput(parseInt(el.dataset.lane), true); } } }, {passive:false});
 tArea.addEventListener('touchend', () => { const els = document.querySelectorAll('.touch-zone'); els.forEach((el, idx) => { el.classList.remove('active'); handleInput(idx, false); }); });
-
-// Drag & Drop
-const dropZone = document.body;
-const dragOverlay = document.getElementById('drag-overlay');
-window.addEventListener('dragover', e => { e.preventDefault(); dragOverlay.style.display = 'flex'; });
-window.addEventListener('dragleave', e => { if(e.relatedTarget === null) dragOverlay.style.display = 'none'; });
-window.addEventListener('drop', e => {
-    e.preventDefault(); dragOverlay.style.display = 'none';
-    if(e.dataTransfer.items) {
-        [...e.dataTransfer.items].forEach(item => {
-            if (item.kind === 'file') LibraryManager.addSong(item.getAsFile());
-        });
-    }
-});
-
-document.getElementById('btn-add').addEventListener('click', () => document.getElementById('file-input').click());
-document.getElementById('file-input').addEventListener('change', (e) => {
-    [...e.target.files].forEach(file => LibraryManager.addSong(file));
-});
-document.getElementById('btn-restart').addEventListener('click', () => {
-    document.getElementById('results-screen').style.display = 'none';
-    document.getElementById('start-screen').style.display = 'flex';
-});
 
 initGraphics();
 window.addEventListener('resize', () => {
