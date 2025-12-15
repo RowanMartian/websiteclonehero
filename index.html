@@ -433,7 +433,7 @@ let fretBoardGroup, notesGroup, flamesGroup;
 let hitMarkers = [], flames = [];
 
 // Local Library State (In-memory)
-// Each item: { id, name, zip, art, source, zipBlob }
+// Each item: { id, name, zip, art, artist, source, zipBlob }
 let localLibrary = [];
 let serverLibraryCache = []; // Stores preloaded metadata for server songs
 
@@ -473,6 +473,7 @@ const LibraryManager = {
                     // Store complete blob for playback later to avoid re-download
                     serverLibraryCache.push({
                         name: meta.title || filename.replace('.zip',''),
+                        artist: meta.artist || "SERVER",
                         art: meta.artUrl,
                         zip: zip, 
                         source: 'SERVER'
@@ -520,7 +521,9 @@ const LibraryManager = {
         
         const source = document.createElement('div');
         source.className = 'song-source';
-        source.innerText = song.source;
+        // USE ARTIST NAME INSTEAD OF "SERVER" or "LOCAL FILE"
+        // If artist is missing, fallback to source type
+        source.innerText = song.artist || (song.source === 'LOCAL' ? 'LOCAL FILE' : 'UNKNOWN ARTIST');
 
         info.appendChild(title);
         info.appendChild(source);
@@ -542,6 +545,7 @@ const LibraryManager = {
             localLibrary.push({
                 id: Date.now() + Math.random(),
                 name: meta.title || file.name.replace(/\.zip$/i, ''),
+                artist: meta.artist || "LOCAL FILE",
                 zip: zip,
                 art: meta.artUrl,
                 source: "LOCAL"
@@ -580,36 +584,31 @@ const LibraryManager = {
             artUrl = URL.createObjectURL(imgBlob);
         }
 
-        // Extract Name
+        // Extract Name & Artist
         let songTitle = "";
+        let songArtist = "";
         
         // Priority 1: INI
         if (iniFile) {
             const iniText = await iniFile.async("string");
             const nameMatch = iniText.match(/^name\s*=\s*(.+)$/m);
             const artistMatch = iniText.match(/^artist\s*=\s*(.+)$/m);
-            if (nameMatch) {
-                const sName = nameMatch[1].trim();
-                const artist = artistMatch ? artistMatch[1].trim() : "";
-                if (artist) songTitle = `${artist} - ${sName}`;
-                else songTitle = sName;
-            }
+            
+            if (nameMatch) songTitle = nameMatch[1].trim();
+            if (artistMatch) songArtist = artistMatch[1].trim();
         }
 
         // Priority 2: Chart File [Song] section
-        if (!songTitle && chartFile) {
+        if ((!songTitle || !songArtist) && chartFile) {
             const chartText = await chartFile.async("string");
             const nameMatch = chartText.match(/Name\s*=\s*"(.*?)"/);
             const artistMatch = chartText.match(/Artist\s*=\s*"(.*?)"/);
-            if(nameMatch) {
-                const sName = nameMatch[1];
-                const artist = artistMatch ? artistMatch[1] : "";
-                if (artist) songTitle = `${artist} - ${sName}`;
-                else songTitle = sName;
-            }
+            
+            if(nameMatch && !songTitle) songTitle = nameMatch[1];
+            if(artistMatch && !songArtist) songArtist = artistMatch[1];
         }
 
-        return { title: songTitle, artUrl: artUrl };
+        return { title: songTitle, artist: songArtist, artUrl: artUrl };
     },
 
     // Plays a song that is already loaded as a JSZip object
