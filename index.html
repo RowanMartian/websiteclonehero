@@ -20,16 +20,58 @@
             touch-action: none;
         }
 
+        /* CRT Vignette & Scanlines Container */
+        #crt-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%);
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.7);
+        }
+
+        /* Moving Scanlines */
+        .scanlines {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 1001;
+            animation: scanline-scroll 10s linear infinite;
+            will-change: background-position; /* Optimization */
+        }
+
+        @keyframes scanline-scroll {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 100%; }
+        }
+
         /* Background Art Layer */
         #bg-layer {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background-size: cover;
             background-position: center;
-            opacity: 0.3;
-            filter: blur(8px) grayscale(40%);
+            opacity: 0.4;
+            filter: blur(4px) grayscale(60%);
             z-index: 1;
             transition: opacity 1s, background-image 0.5s;
+        }
+
+        /* Storm Canvas (Lightning) */
+        #storm-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 25; /* Behind Menu, Above Game */
+            pointer-events: none;
+            mix-blend-mode: screen;
         }
 
         #game-wrapper {
@@ -38,6 +80,19 @@
             z-index: 5;
             display: flex;
             justify-content: center;
+            transition: transform 0.1s;
+        }
+
+        /* Screen Shake Animation Class */
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
         }
 
         #game-canvas-container {
@@ -86,7 +141,7 @@
             align-items: flex-end;
         }
 
-        #score-val { font-size: 24px; color: #fff; margin-bottom: 5px; }
+        #score-val { font-size: 24px; color: #fff; margin-bottom: 5px; text-shadow: 0 0 10px #0ff; }
         
         #mult-container {
             display: flex;
@@ -95,7 +150,7 @@
         }
         
         #mult-badge {
-            background: #222;
+            background: #111;
             border: 2px solid #fff;
             border-radius: 50%;
             width: 50px;
@@ -105,7 +160,7 @@
             justify-content: center;
             font-size: 18px;
             color: #ff0;
-            box-shadow: 0 0 5px #000;
+            box-shadow: 0 0 10px #ff0;
             margin-right: 10px;
             z-index: 2;
         }
@@ -113,11 +168,11 @@
         #multiplier-bar {
             width: 150px;
             height: 15px;
-            background: #333;
+            background: #222;
             border: 2px solid #fff;
             position: relative;
             box-shadow: 0 0 5px #000;
-            transform: skewX(-20deg); /* Style */
+            transform: skewX(-20deg);
         }
 
         #multiplier-fill {
@@ -125,6 +180,7 @@
             width: 0%;
             background: #00ff00; 
             transition: width 0.1s linear, background-color 0.2s;
+            box-shadow: 0 0 10px inset rgba(255,255,255,0.5);
         }
 
         #streak-text {
@@ -139,11 +195,11 @@
         body.thunder-ready #multiplier-fill {
             background: #00ffff !important;
             box-shadow: 0 0 15px #00ffff;
-            animation: pulse-bar 0.5s infinite alternate;
+            animation: pulse-bar 0.2s infinite alternate;
         }
         body.thunder-active #multiplier-fill {
             background: #ffffff !important;
-            box-shadow: 0 0 20px #00ffff;
+            box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
         }
         body.thunder-active #mult-badge {
             border-color: #00ffff;
@@ -154,33 +210,34 @@
 
         @keyframes pulse-bar {
             from { box-shadow: 0 0 5px #00ffff; }
-            to { box-shadow: 0 0 20px #00ffff; }
+            to { box-shadow: 0 0 25px #00ffff; }
         }
 
-        /* Thunder Popup - Lowered */
         #thunder-popup {
             position: absolute;
-            bottom: 50px; /* Below highway area */
+            bottom: 60px;
             left: 50%;
             transform: translateX(-50%);
             text-align: center;
             display: none;
             flex-direction: column;
             align-items: center;
-            animation: float 1s infinite alternate;
+            animation: float 0.5s infinite alternate;
             z-index: 20;
             pointer-events: none;
         }
-        @keyframes float { from{transform:translate(-50%, 0);} to{transform:translate(-50%, -5px);} }
+        @keyframes float { from{transform:translate(-50%, 0);} to{transform:translate(-50%, -8px);} }
 
         .thunder-text {
-            color: #00ffff;
-            font-size: 18px;
-            text-shadow: 0 0 10px #00ffff;
-            margin-bottom: 5px;
-            background: rgba(0,0,0,0.5);
-            padding: 5px 10px;
-            border: 1px solid #00ffff;
+            color: #fff;
+            font-size: 20px;
+            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 15px;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 15px #00ffff;
+            transform: skewX(-10deg);
         }
         
         .space-key-icon {
@@ -189,17 +246,8 @@
             padding: 5px 20px;
             color: #fff;
             font-size: 12px;
-            background: rgba(0, 255, 255, 0.2);
+            background: rgba(0, 255, 255, 0.4);
             box-shadow: 0 0 10px #00ffff;
-        }
-
-        #lightning-flash {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #fff;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 100;
         }
 
         /* Mobile Controls */
@@ -222,11 +270,12 @@
             background: linear-gradient(to top, rgba(255,255,255,0.4), transparent);
         }
 
-        /* Screens */
+        /* Screens - Glassy look for prominence */
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.92);
+            background: rgba(10, 10, 10, 0.75); /* Semi-transparent */
+            backdrop-filter: blur(4px); /* Blur behind */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -239,48 +288,63 @@
 
         /* Main Title Flair */
         h1 {
-            color: #ff00ff;
-            text-shadow: 4px 4px #00ffff;
-            font-size: 50px;
+            color: #fff;
+            font-size: 55px;
             text-align: center;
             line-height: 1.2;
             margin-bottom: 40px;
             transform: skewX(-10deg);
-            animation: title-bob 3s ease-in-out infinite;
+            text-shadow: 
+                3px 3px 0px #ff00ff, 
+                -3px -3px 0px #00ffff,
+                0 0 20px rgba(255,255,255,0.8);
+            animation: neon-flicker 4s infinite;
         }
-        @keyframes title-bob {
-            0%, 100% { transform: skewX(-10deg) translateY(0) rotate(0deg); }
-            50% { transform: skewX(-10deg) translateY(-10px) rotate(1deg); }
+        
+        @keyframes neon-flicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+                text-shadow: 
+                    3px 3px 0px #ff00ff, 
+                    -3px -3px 0px #00ffff,
+                    0 0 20px rgba(255,255,255,0.8);
+                opacity: 1;
+            }
+            20%, 24%, 55% {
+                text-shadow: none;
+                opacity: 0.5;
+            }
         }
 
-        /* Button Rockstar Style */
+        /* Revamped Button Style */
         .btn {
-            background: #000;
-            border: 3px solid #fff;
-            color: #fff;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #00ffff;
+            color: #00ffff;
             padding: 20px 40px;
             font-family: 'Press Start 2P', cursive;
             font-size: 16px;
             cursor: pointer;
             margin: 15px;
-            width: 300px;
+            width: 320px;
             text-align: center;
             transition: all 0.1s;
             text-transform: uppercase;
-            box-shadow: 5px 5px 0px #00ffff;
+            box-shadow: 0 0 10px #00ffff, inset 0 0 10px rgba(0, 255, 255, 0.2);
             transform: skewX(-10deg);
             position: relative;
             overflow: hidden;
+            letter-spacing: 2px;
         }
         .btn:hover { 
-            transform: skewX(-10deg) scale(1.05) translate(-2px, -2px); 
-            box-shadow: 7px 7px 0px #ff00ff;
-            background: #222; 
+            transform: skewX(-10deg) scale(1.05); 
+            box-shadow: 0 0 20px #ff00ff, inset 0 0 20px rgba(255, 0, 255, 0.4);
+            background: rgba(20,20,20,0.9); 
             border-color: #ff00ff; 
+            color: #ff00ff;
+            text-shadow: 0 0 8px #ff00ff;
         }
         .btn:active {
             transform: skewX(-10deg) scale(0.98);
-            box-shadow: 2px 2px 0px #ff00ff;
         }
 
         #file-input { display: none; }
@@ -289,12 +353,12 @@
         #main-menu-container {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
         }
 
         /* Library List */
         #library-view {
-            display: none; /* Hidden by default */
+            display: none;
             flex-direction: column;
             align-items: center;
             width: 100%;
@@ -306,20 +370,20 @@
             width: 90%;
             max-width: 600px;
             flex: 1;
-            background: rgba(20, 20, 20, 0.8);
-            border: 2px solid #555;
+            background: rgba(20, 20, 20, 0.9);
+            border: 2px solid #00ffff;
             margin-bottom: 20px;
             overflow-y: auto;
             padding: 10px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
         }
 
         .song-item {
             background: #111;
-            border: 2px solid #333;
+            border: 1px solid #333;
             padding: 10px;
             display: flex;
             align-items: center;
@@ -327,9 +391,10 @@
             transition: all 0.2s;
         }
         .song-item:hover {
-            border-color: #0f0;
+            border-color: #0ff;
             background: #222;
-            transform: translateX(5px);
+            transform: translateX(10px);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
         }
         .song-thumb {
             width: 60px;
@@ -358,7 +423,7 @@
             color: #888;
         }
 
-        /* Add Song Modal (Drop Zone) */
+        /* Add Song Modal */
         #add-song-modal {
             display: none;
             position: absolute;
@@ -420,47 +485,24 @@
         .stars { color: #ffd700; font-size: 40px; margin: 20px 0; text-shadow: 2px 2px 0 #000; letter-spacing: 5px; }
         .grade { font-size: 60px; color: #00ff00; text-shadow: 4px 4px 0 #000; margin-bottom: 20px; }
 
-        /* Random Lightning on Menu */
-        .menu-flash {
-            position: absolute;
-            top: 0; bottom: 0; width: 100px;
-            background: rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 50px 20px rgba(255, 255, 255, 0.8);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 5;
-        }
-
-        /* Scanlines */
-        .scanlines {
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0),
-                rgba(255,255,255,0) 50%,
-                rgba(0,0,0,0.15) 50%,
-                rgba(0,0,0,0.15)
-            );
-            background-size: 100% 4px;
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            pointer-events: none;
-            z-index: 25;
-        }
     </style>
 </head>
 <body>
 
+    <!-- CRT Overlay Layer -->
+    <div id="crt-overlay">
+        <div class="scanlines"></div>
+    </div>
+
+    <!-- Background Layers -->
     <div id="bg-layer"></div>
+    <canvas id="storm-canvas"></canvas>
+
     <div id="game-wrapper">
         <div id="game-canvas-container">
-            <div id="lightning-flash"></div>
+            <!-- Game renders here -->
         </div>
     </div>
-    <div class="scanlines"></div>
-
-    <!-- Random Menu Lightning Elements -->
-    <div id="flash-left" class="menu-flash" style="left: 10%;"></div>
-    <div id="flash-right" class="menu-flash" style="right: 10%;"></div>
 
     <div id="ui-layer">
         <div id="score-board">
@@ -495,18 +537,19 @@
             <button class="btn" id="btn-open-library">Library</button>
             <button class="btn" id="btn-open-add">Add Songs</button>
         </div>
-        <div style="margin-top: 30px; font-size: 10px; color: #888;">
-            KEYS: D F J K L <br> SPACE FOR THUNDER
+        <div style="margin-top: 40px; font-size: 12px; color: #aaa; text-align:center; text-shadow: 1px 1px 0 #000;">
+            KEYS: D F J K L <br><br>
+            <span style="color:#0ff">SPACE FOR THUNDER</span>
         </div>
     </div>
 
     <!-- Library View -->
     <div id="library-view" class="overlay-screen">
-        <h2 style="margin-top: 20px; color: #0ff;">SONG LIBRARY</h2>
+        <h2 style="margin-top: 20px; color: #0ff; text-shadow: 0 0 10px #0ff;">SONG LIBRARY</h2>
         <div id="library-list">
             <!-- List Items Here -->
         </div>
-        <button class="btn" id="btn-back-main" style="margin-bottom: 20px;">Back</button>
+        <button class="btn" id="btn-back-main" style="margin-bottom: 20px; border-color: #fff; color: #fff;">Back</button>
     </div>
 
     <!-- Add Song Modal -->
@@ -516,13 +559,13 @@
             DROP ZIP FILES HERE
         </div>
         <button class="btn" id="btn-browse">Browse Files</button>
-        <button class="btn" id="btn-close-add" style="margin-top: 20px; border-color: #f00;">Close</button>
+        <button class="btn" id="btn-close-add" style="margin-top: 20px; border-color: #f00; color:#f00; box-shadow:none;">Close</button>
         <input type="file" id="file-input" accept=".zip,application/zip,application/x-zip-compressed" multiple>
     </div>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay">
-        <h2 id="loading-text">LOADING LIBRARY...</h2>
+        <h2 id="loading-text" style="text-shadow: 0 0 10px #0f0;">LOADING LIBRARY...</h2>
         <div id="progress-bar"><div id="progress-fill"></div></div>
     </div>
 
@@ -550,20 +593,22 @@ const LANE_WIDTH = 1.2;
 const HIT_WINDOW = 0.140; 
 const NOTE_SPEED = 30; 
 const KEYS = { 'KeyD': 0, 'KeyF': 1, 'KeyJ': 2, 'KeyK': 3, 'KeyL': 4 };
-const NOTES_PER_MULTIPLIER = 20; // Harder difficulty
-const TIME_TO_FILL_THUNDER = 30; // 30s of 4x to fill bar
-const THUNDER_DURATION = 15;     // 15s duration
+const NOTES_PER_MULTIPLIER = 20; 
+const TIME_TO_FILL_THUNDER = 30; 
+const THUNDER_DURATION = 15;     
 
 // Hardcoded Server Song List
 const SERVER_SONGS = [
     "Youmightthink.zip",
     "Babaoriley.zip",
     "Basketcase.zip",
+    "Boysdontcry.zip",
     "Goldenbrown.zip",
     "Hotelcalifornia.zip",
     "Imnotinlove.zip",
     "Iris.zip",
     "Layla.zip",
+    "Rockthecasbah.zip",
     "Shouldistay.zip",
     "Stairwaytoheaven.zip",
     "Talkinginyoursleep.zip",
@@ -574,6 +619,7 @@ const SERVER_SONGS = [
 let isPlaying = false;
 let score = 0, combo = 0, maxCombo = 0, multiplier = 1;
 let songData = [], totalNotesInSong = 0, notesHitCount = 0;
+let activeNoteStartIndex = 0; // Optimization: Sliding Window
 let audioCtx, bgmSource, bgmBuffer, bgmStartTime = 0, songOffset = 0;
 let gameLoopId;
 
@@ -583,45 +629,152 @@ let isThunderReady = false;
 let isThunderActive = false;
 let thunderTimeRemaining = 0;
 
-// Menu Effects
-let menuFlashInterval = null;
-
 // Three.js Globals
 let scene, camera, renderer;
 let fretBoardGroup, notesGroup, flamesGroup;
-let hitMarkers = [], flames = [];
+let hitMarkers = [], activeFlames = [];
+
+// Resources (Pooling/Shared)
+let NOTE_GEO, NOTE_MATS, MISSED_NOTE_MAT;
+let FLAME_GEO, FLAME_MATS, flamePool = [];
 
 // Local Library State (In-memory)
 let localLibrary = [];
 let serverLibraryCache = []; 
 
-// --- Menu Flair Logic ---
-function startMenuEffects() {
-    if(menuFlashInterval) clearInterval(menuFlashInterval);
-    
-    const flash = () => {
-        const side = Math.random() > 0.5 ? 'flash-left' : 'flash-right';
-        const el = document.getElementById(side);
-        el.style.opacity = 0.8;
-        el.style.top = Math.random() * 50 + '%';
+// --- Storm / Visual System ---
+const StormSystem = {
+    canvas: null,
+    ctx: null,
+    bolts: [],
+    flashOpacity: 0,
+    width: 0,
+    height: 0,
+    isAnimating: false,
+
+    init: function() {
+        this.canvas = document.getElementById('storm-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        // Start random menu storms
+        this.scheduleRandomStorm();
+        this.startAnimation();
+    },
+
+    resize: function() {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+    },
+
+    triggerFlash: function(intensity = 1.0) {
+        this.flashOpacity = intensity;
+        this.createBolt();
+        // Trigger Screen Shake
+        const wrap = document.getElementById('game-wrapper');
+        wrap.classList.remove('shake');
+        void wrap.offsetWidth; // trigger reflow
+        wrap.classList.add('shake');
+        this.startAnimation(); // Ensure loop is running
+    },
+
+    createBolt: function() {
+        // Create a jagged line
+        const startX = Math.random() * this.width;
+        const endX = Math.random() * this.width;
+        const segments = 15;
+        const points = [];
+        let curX = startX;
+        let curY = 0;
         
-        setTimeout(() => el.style.opacity = 0, 100);
-        setTimeout(() => el.style.opacity = 0.5, 150);
-        setTimeout(() => el.style.opacity = 0, 300);
+        points.push({x: curX, y: curY});
+        
+        for(let i=0; i<segments; i++) {
+            curY += (this.height / segments);
+            curX += (Math.random() - 0.5) * 200; // Jaggedness
+            points.push({x: curX, y: curY});
+        }
+        
+        this.bolts.push({
+            points: points,
+            life: 1.0,
+            width: 3 + Math.random() * 5
+        });
+    },
 
-        // Next flash in 5-10s
-        const nextTime = 5000 + Math.random() * 5000;
-        menuFlashInterval = setTimeout(flash, nextTime);
-    };
-    
-    flash();
-}
+    scheduleRandomStorm: function() {
+        if(isPlaying && !isThunderActive) {
+            setTimeout(() => this.scheduleRandomStorm(), 5000);
+            return;
+        }
 
-function stopMenuEffects() {
-    if(menuFlashInterval) clearTimeout(menuFlashInterval);
-    document.getElementById('flash-left').style.opacity = 0;
-    document.getElementById('flash-right').style.opacity = 0;
-}
+        const nextTime = isThunderActive ? 200 + Math.random() * 800 : 2000 + Math.random() * 4000;
+        
+        setTimeout(() => {
+            if(!isPlaying || isThunderActive) {
+                this.triggerFlash(Math.random() * 0.6 + 0.2);
+            }
+            this.scheduleRandomStorm();
+        }, nextTime);
+    },
+
+    startAnimation: function() {
+        if(!this.isAnimating) {
+            this.isAnimating = true;
+            this.animate();
+        }
+    },
+
+    animate: function() {
+        if (this.bolts.length === 0 && this.flashOpacity <= 0.01) {
+            this.isAnimating = false;
+            this.ctx.clearRect(0, 0, this.width, this.height);
+            return; // Stop loop
+        }
+
+        requestAnimationFrame(() => this.animate());
+        
+        this.ctx.clearRect(0, 0, this.width, this.height);
+
+        // Draw Flash
+        if(this.flashOpacity > 0) {
+            this.ctx.fillStyle = `rgba(200, 230, 255, ${this.flashOpacity * 0.4})`;
+            this.ctx.fillRect(0, 0, this.width, this.height);
+            this.flashOpacity -= 0.05;
+        }
+
+        // Draw Bolts
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        
+        for(let i=this.bolts.length-1; i>=0; i--) {
+            const b = this.bolts[i];
+            b.life -= 0.05;
+            if(b.life <= 0) {
+                this.bolts.splice(i, 1);
+                continue;
+            }
+
+            // Outer Glow
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = `rgba(0, 255, 255, ${b.life * 0.5})`;
+            this.ctx.lineWidth = b.width * 4;
+            this.ctx.moveTo(b.points[0].x, b.points[0].y);
+            for(let p of b.points) this.ctx.lineTo(p.x, p.y);
+            this.ctx.stroke();
+
+            // Inner Core
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${b.life})`;
+            this.ctx.lineWidth = b.width;
+            this.ctx.moveTo(b.points[0].x, b.points[0].y);
+            for(let p of b.points) this.ctx.lineTo(p.x, p.y);
+            this.ctx.stroke();
+        }
+    }
+};
 
 // --- Zip & Library Handling ---
 
@@ -974,12 +1127,25 @@ function initGraphics() {
     light.position.set(0, 10, 5);
     scene.add(light);
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    
+    // Init Groups
     fretBoardGroup = new THREE.Group();
     notesGroup = new THREE.Group();
     flamesGroup = new THREE.Group();
     scene.add(fretBoardGroup);
     scene.add(notesGroup);
     scene.add(flamesGroup);
+    
+    // Init Shared Materials/Geometry (Optimization)
+    NOTE_GEO = new THREE.OctahedronGeometry(0.4, 0);
+    NOTE_GEO.scale(1.2, 0.6, 1.2);
+    NOTE_MATS = COLORS.map(c => new THREE.MeshPhongMaterial({ color: c, emissive: c, emissiveIntensity: 0.5, shininess: 80 }));
+    MISSED_NOTE_MAT = new THREE.MeshPhongMaterial({ color: 0x555555, emissive: 0x000000, transparent: true, opacity: 0.3, shininess: 80 });
+    
+    FLAME_GEO = new THREE.ConeGeometry(0.05, 1.0, 3); // Base height 1.0 for scaling
+    FLAME_MATS = COLORS.map(c => new THREE.MeshBasicMaterial({ color: c }));
+
+    // Fretboard setup
     const boardGeo = new THREE.PlaneGeometry(LANES * LANE_WIDTH + 1, 1000);
     const boardMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8 });
     const board = new THREE.Mesh(boardGeo, boardMat);
@@ -1014,36 +1180,58 @@ function initGraphics() {
         fretBoardGroup.add(fill);
     }
 }
-function createNoteMesh(lane, color) {
-    const geometry = new THREE.OctahedronGeometry(0.4, 0);
-    geometry.scale(1.2, 0.6, 1.2);
-    const material = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.5, shininess: 80 });
-    return new THREE.Mesh(geometry, material);
+
+function createNoteMesh(lane) {
+    // Reuse shared geometry and material
+    return new THREE.Mesh(NOTE_GEO, NOTE_MATS[lane]);
 }
+
 function spawnFlame(lane) {
     const x = ((lane + 0.5) * LANE_WIDTH) - ((LANES * LANE_WIDTH) / 2);
-    const color = COLORS[lane];
+    const material = FLAME_MATS[lane];
+    
     for(let i=0; i<8; i++) {
-        const geo = new THREE.ConeGeometry(0.05, 0.5 + Math.random(), 3);
-        const mat = new THREE.MeshBasicMaterial({ color: color });
-        const mesh = new THREE.Mesh(geo, mat);
+        let mesh;
+        if (flamePool.length > 0) {
+            mesh = flamePool.pop();
+            mesh.visible = true;
+        } else {
+            mesh = new THREE.Mesh(FLAME_GEO, material); // Initial material binding
+            flamesGroup.add(mesh);
+        }
+        
+        // Ensure correct material (in case recycled mesh had diff color)
+        mesh.material = material; 
+
         mesh.position.set(x + (Math.random()-0.5)*0.5, 0, (Math.random()-0.5)*0.5);
         mesh.rotation.x = Math.random()-0.5;
         mesh.rotation.z = Math.random()-0.5;
-        flamesGroup.add(mesh);
-        flames.push({ mesh, life: 1.0, velocity: new THREE.Vector3(0, 3+Math.random()*2, 0) });
+        
+        // Use Scale Y for random length visual
+        const randH = 0.5 + Math.random(); 
+        mesh.scale.set(1, randH, 1);
+        
+        activeFlames.push({ 
+            mesh, 
+            life: 1.0, 
+            velocity: new THREE.Vector3(0, 3+Math.random()*2, 0),
+            initialScaleY: randH
+        });
     }
 }
+
 function updateFlames(dt) {
-    for (let i = flames.length - 1; i >= 0; i--) {
-        const p = flames[i];
+    for (let i = activeFlames.length - 1; i >= 0; i--) {
+        const p = activeFlames[i];
         p.life -= dt * 3.5;
         if(p.life <= 0) {
-            flamesGroup.remove(p.mesh);
-            flames.splice(i, 1);
+            p.mesh.visible = false;
+            flamePool.push(p.mesh);
+            activeFlames.splice(i, 1);
         } else {
             p.mesh.position.addScaledVector(p.velocity, dt);
-            p.mesh.scale.setScalar(p.life);
+            // Scale mesh down uniformly based on life, preserving original random height
+            p.mesh.scale.set(p.life, p.initialScaleY * p.life, p.life);
         }
     }
 }
@@ -1055,8 +1243,7 @@ function startGame(notes) {
     totalNotesInSong = notes.length;
     notesHitCount = 0; score = 0; combo = 0; maxCombo = 0; multiplier = 1;
     accumulated4xTime = 0; isThunderReady = false; isThunderActive = false; thunderTimeRemaining = 0;
-    
-    stopMenuEffects(); // Stop lightning effects in game
+    activeNoteStartIndex = 0; // Reset scanner
     
     // UI Reset
     document.body.classList.remove('thunder-active', 'thunder-ready');
@@ -1064,9 +1251,14 @@ function startGame(notes) {
     
     isPlaying = true; isSongFinished = false;
     while(notesGroup.children.length > 0) notesGroup.remove(notesGroup.children[0]);
+    
+    // Clear Flames
+    activeFlames.forEach(f => { f.mesh.visible = false; flamePool.push(f.mesh); });
+    activeFlames = [];
+
     songData.forEach(note => {
-        const mesh = createNoteMesh(note.lane, COLORS[note.lane]);
-        mesh.position.set(0, -200, 0);
+        const mesh = createNoteMesh(note.lane);
+        mesh.position.set(0, -200, 0); // Hide initially
         note.mesh = mesh;
         note.hit = false; note.missed = false; 
         notesGroup.add(mesh);
@@ -1115,7 +1307,6 @@ function updateGame() {
     }
 
     // --- THUNDER LOGIC ---
-    // 1. Charge Mechanics (Only at 4x and not already active/ready)
     if (multiplier === 4 && !isThunderActive && !isThunderReady) {
         accumulated4xTime += dt;
         if (accumulated4xTime >= TIME_TO_FILL_THUNDER) {
@@ -1123,48 +1314,82 @@ function updateGame() {
             isThunderReady = true;
             document.body.classList.add('thunder-ready');
             document.getElementById('thunder-popup').style.display = 'flex';
+            StormSystem.triggerFlash(0.5); 
         }
-        updateUI(); // Force update bar for blue fill
+        updateUI(); 
     }
 
-    // 2. Active Mechanics
     if (isThunderActive) {
         thunderTimeRemaining -= dt;
-        multiplier = 8; // Force 8x
+        multiplier = 8; 
         if (thunderTimeRemaining <= 0) {
             isThunderActive = false;
             isThunderReady = false;
             accumulated4xTime = 0;
-            multiplier = 4; // Revert to 4x (assume player kept streak, standard mechanic)
+            multiplier = 4; 
             document.body.classList.remove('thunder-active');
             updateUI();
         } else {
-            // Update Bar to drain
-            const bar = document.getElementById('multiplier-fill');
             const pct = (thunderTimeRemaining / THUNDER_DURATION) * 100;
+            const bar = document.getElementById('multiplier-fill');
             bar.style.width = pct + '%';
         }
     }
 
-    // Update Notes
-    songData.forEach(note => {
-        if (note.hit && !note.missed) { note.mesh.visible = false; return; }
+    // Update Notes - Optimized Loop with sliding window
+    // We start from where we left off (minus buffer in case of misses processed out of order?)
+    // Actually simpler: iterate from activeNoteStartIndex until we find a note that is too far in future.
+    // Also check if activeNoteStartIndex needs to move up.
+    
+    for (let i = activeNoteStartIndex; i < songData.length; i++) {
+        const note = songData[i];
+        
+        // If note is handled (hit or missed) AND it's the current start index, we can move the window up next frame
+        // But for safety, we just check zPos conditions here.
+        
+        if (note.hit) {
+            if (!note.mesh.visible) {
+                 // It's already hidden, if this is at the start, move the window
+                 if (i === activeNoteStartIndex) activeNoteStartIndex++;
+            }
+            continue; 
+        }
+        
+        // If note is missed and behind camera, move window
+        if (note.missed) {
+             // Visual update handled, if it's way behind, we can skip logic?
+             // Not really, we just let it drift until off screen?
+             const zPos = -(note.time - songTime) * NOTE_SPEED;
+             if (zPos > 50) { // Way behind
+                 note.mesh.visible = false;
+                 if (i === activeNoteStartIndex) activeNoteStartIndex++;
+                 continue;
+             }
+        }
+
         const timeDiff = note.time - songTime;
+        
+        // Optimization: If note is > 5 seconds in future, stop processing list
+        if (timeDiff > 5.0) break; 
+        
         const zPos = -timeDiff * NOTE_SPEED;
+        
         if (zPos > 1.0 && !note.hit && !note.missed) {
             note.missed = true; 
             breakCombo();
-            note.mesh.material.color.setHex(0x555555);
-            note.mesh.material.emissive.setHex(0x000000);
-            note.mesh.material.transparent = true;
-            note.mesh.material.opacity = 0.3; 
+            // Switch to Shared Missed Material
+            note.mesh.material = MISSED_NOTE_MAT;
         }
+
         if (zPos > -150 && zPos < 50) {
             const x = ((note.lane + 0.5) * LANE_WIDTH) - ((LANES * LANE_WIDTH) / 2);
             note.mesh.position.set(x, 0.4, zPos);
             note.mesh.visible = true;
-        } else note.mesh.visible = false;
-    });
+        } else {
+            note.mesh.visible = false;
+        }
+    }
+    
     updateFlames(dt);
 }
 
@@ -1177,20 +1402,24 @@ function activateThunder() {
         document.body.classList.add('thunder-active');
         document.getElementById('thunder-popup').style.display = 'none';
         
-        // Flash Effect
-        const flash = document.getElementById('lightning-flash');
-        flash.style.opacity = 1;
-        // Double Flash
-        setTimeout(() => flash.style.opacity = 0, 100);
-        setTimeout(() => flash.style.opacity = 1, 200);
-        setTimeout(() => flash.style.opacity = 0, 400);
+        StormSystem.triggerFlash(1.0); 
     }
 }
 
 function checkHit(lane) {
     if (!isPlaying) return;
     const songTime = AudioEngine.ctx.currentTime - bgmStartTime - songOffset;
-    const validNotes = songData.filter(n => !n.hit && !n.missed && n.lane === lane);
+    
+    // Only search relevant range in array to be safe, but filter is fast enough for <2000 items usually.
+    // However, using the window index helps slightly.
+    const validNotes = [];
+    // Optimization: Only scan upcoming notes
+    for(let i=activeNoteStartIndex; i<songData.length; i++) {
+        const n = songData[i];
+        if (n.time - songTime > 0.5) break; // Don't check notes too far ahead
+        if (!n.hit && !n.missed && n.lane === lane) validNotes.push(n);
+    }
+
     if(validNotes.length > 0) {
         const note = validNotes[0];
         const diff = Math.abs(note.time - songTime);
@@ -1205,27 +1434,19 @@ function checkHit(lane) {
 
 function addScore() {
     combo++; if(combo > maxCombo) maxCombo = combo; notesHitCount++;
-    
-    // Only recalc multiplier if Thunder is NOT active (Thunder locks it at 8x)
     if (!isThunderActive) {
         multiplier = 1 + Math.floor(combo / NOTES_PER_MULTIPLIER); 
         if(multiplier > 4) multiplier = 4;
     }
-    
     score += 100 * multiplier; 
     updateUI();
 }
 
 function breakCombo() {
-    // If Thunder is active, combo/multiplier is protected
     if (isThunderActive) return;
-
     if(combo > 0) { 
         combo = 0; 
         multiplier = 1; 
-        // Reset charge on miss? Prompt implies cumulative, "doesn't need to be 30s consistently".
-        // BUT usually if you drop combo you drop out of 4x, so charging pauses.
-        // We do NOT reset accumulated4xTime here based on user request.
         updateUI(); 
         AudioEngine.playMiss(); 
     }
@@ -1238,16 +1459,14 @@ function updateUI() {
     const el = document.getElementById('multiplier-fill');
     
     if (isThunderActive) {
-        // Handled in updateGame loop for smooth draining
+        // Handled in updateGame loop
     } else if (isThunderReady) {
         el.style.width = '100%';
     } else if (multiplier === 4) {
-        // Show Thunder Charge Progress
         const pct = (accumulated4xTime / TIME_TO_FILL_THUNDER) * 100;
         el.style.width = pct + '%';
-        el.style.backgroundColor = '#00ffff'; // Neon Blue while filling
+        el.style.backgroundColor = '#00ffff'; 
     } else {
-        // Standard Multiplier Progress (Green)
         const fill = (combo % NOTES_PER_MULTIPLIER) * (100 / NOTES_PER_MULTIPLIER);
         el.style.width = fill + '%';
         el.style.backgroundColor = '#00ff00';
@@ -1294,7 +1513,7 @@ document.getElementById('file-input').addEventListener('change', (e) => {
 document.getElementById('btn-restart').addEventListener('click', () => {
     document.getElementById('results-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
-    startMenuEffects(); // Restart main menu visuals
+    // Restart logic...
 });
 
 // Input
@@ -1318,7 +1537,7 @@ const tArea = document.getElementById('touch-controls');
 tArea.addEventListener('touchstart', e => { e.preventDefault(); for(let i=0; i<e.changedTouches.length; i++) { const t = e.changedTouches[i]; const el = document.elementFromPoint(t.clientX, t.clientY); if(el && el.dataset.lane) { el.classList.add('active'); handleInput(parseInt(el.dataset.lane), true); } } }, {passive:false});
 tArea.addEventListener('touchend', () => { const els = document.querySelectorAll('.touch-zone'); els.forEach((el, idx) => { el.classList.remove('active'); handleInput(idx, false); }); });
 
-startMenuEffects(); // Init effect
+StormSystem.init();
 initGraphics();
 window.addEventListener('resize', () => {
     const container = document.getElementById('game-canvas-container');
