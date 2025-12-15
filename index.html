@@ -93,13 +93,72 @@
             border: 2px solid #fff;
             margin-top: 10px;
             position: relative;
+            box-shadow: 0 0 5px #000;
         }
 
         #multiplier-fill {
             height: 100%;
             width: 0%;
             background: #00ff00;
-            transition: width 0.1s;
+            transition: width 0.1s, background-color 0.2s;
+        }
+
+        /* Thunder Styles */
+        .thunder-ready #multiplier-fill {
+            background: #00ffff !important;
+            box-shadow: 0 0 15px #00ffff;
+            animation: pulse-bar 0.5s infinite alternate;
+        }
+        .thunder-active #multiplier-fill {
+            background: #ffffff !important;
+            box-shadow: 0 0 20px #00ffff;
+        }
+        .thunder-active #score-board {
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        @keyframes pulse-bar {
+            from { box-shadow: 0 0 5px #00ffff; }
+            to { box-shadow: 0 0 20px #00ffff; }
+        }
+
+        #thunder-popup {
+            position: absolute;
+            bottom: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            animation: float 1s infinite alternate;
+        }
+        @keyframes float { from{transform:translate(-50%, 0);} to{transform:translate(-50%, -10px);} }
+
+        .thunder-text {
+            color: #00ffff;
+            font-size: 24px;
+            text-shadow: 0 0 10px #00ffff;
+            margin-bottom: 10px;
+        }
+        
+        .space-key-icon {
+            border: 2px solid #fff;
+            border-radius: 4px;
+            padding: 5px 20px;
+            color: #fff;
+            font-size: 14px;
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        #lightning-flash {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
         }
 
         #combo-text {
@@ -323,7 +382,9 @@
 
     <div id="bg-layer"></div>
     <div id="game-wrapper">
-        <div id="game-canvas-container"></div>
+        <div id="game-canvas-container">
+            <div id="lightning-flash"></div>
+        </div>
     </div>
     <div class="scanlines"></div>
 
@@ -333,6 +394,12 @@
             <div id="combo-text">COMBO: <span id="combo">0</span>x</div>
             <div id="multiplier-bar"><div id="multiplier-fill"></div></div>
         </div>
+        
+        <div id="thunder-popup">
+            <div class="thunder-text">THUNDER READY</div>
+            <div class="space-key-icon">SPACE</div>
+        </div>
+
         <div id="touch-controls">
             <div class="touch-zone" data-lane="0"></div>
             <div class="touch-zone" data-lane="1"></div>
@@ -350,7 +417,7 @@
             <button class="btn" id="btn-open-add">Add Songs</button>
         </div>
         <div style="margin-top: 30px; font-size: 10px; color: #888;">
-            KEYS: D F J K L
+            KEYS: D F J K L <br> SPACE FOR THUNDER
         </div>
     </div>
 
@@ -404,6 +471,9 @@ const LANE_WIDTH = 1.2;
 const HIT_WINDOW = 0.140; 
 const NOTE_SPEED = 30; 
 const KEYS = { 'KeyD': 0, 'KeyF': 1, 'KeyJ': 2, 'KeyK': 3, 'KeyL': 4 };
+const NOTES_PER_MULTIPLIER = 20; // Harder difficulty (20 notes per level)
+const TIME_TO_FILL_THUNDER = 30; // Seconds of 4x needed
+const THUNDER_DURATION = 15;     // Seconds of 8x
 
 // Hardcoded Server Song List
 const SERVER_SONGS = [
@@ -427,21 +497,25 @@ let songData = [], totalNotesInSong = 0, notesHitCount = 0;
 let audioCtx, bgmSource, bgmBuffer, bgmStartTime = 0, songOffset = 0;
 let gameLoopId;
 
+// Thunder Mechanics
+let accumulated4xTime = 0;
+let isThunderReady = false;
+let isThunderActive = false;
+let thunderTimeRemaining = 0;
+
 // Three.js Globals
 let scene, camera, renderer;
 let fretBoardGroup, notesGroup, flamesGroup;
 let hitMarkers = [], flames = [];
 
 // Local Library State (In-memory)
-// Each item: { id, name, zip, art, artist, source, zipBlob }
 let localLibrary = [];
-let serverLibraryCache = []; // Stores preloaded metadata for server songs
+let serverLibraryCache = []; 
 
 // --- Zip & Library Handling ---
 
 const LibraryManager = {
     // Called when clicking "Library"
-    // Scans server songs if not already cached
     loadLibraryView: async function() {
         const listEl = document.getElementById('library-list');
         const loader = document.getElementById('loading-overlay');
@@ -450,7 +524,6 @@ const LibraryManager = {
         
         listEl.innerHTML = '';
 
-        // If we haven't scanned server songs yet, do it now
         if (serverLibraryCache.length === 0) {
             loader.style.display = 'flex';
             lText.innerText = "SCANNING LIBRARY...";
@@ -460,17 +533,14 @@ const LibraryManager = {
 
             for (const filename of SERVER_SONGS) {
                 try {
-                    // Fetch Blob
                     lText.innerText = `LOADING: ${filename}`;
                     const response = await fetch(filename);
                     if(!response.ok) throw new Error("404");
                     const blob = await response.blob();
                     
-                    // Parse Zip Metadata
                     const zip = await JSZip.loadAsync(blob);
                     const meta = await this.extractMetadata(zip);
                     
-                    // Store complete blob for playback later to avoid re-download
                     serverLibraryCache.push({
                         name: meta.title || filename.replace('.zip',''),
                         artist: meta.artist || "SERVER",
@@ -489,7 +559,6 @@ const LibraryManager = {
             loader.style.display = 'none';
         }
 
-        // Combine Lists
         const allSongs = [...localLibrary, ...serverLibraryCache];
 
         if (allSongs.length === 0) {
@@ -521,8 +590,6 @@ const LibraryManager = {
         
         const source = document.createElement('div');
         source.className = 'song-source';
-        // USE ARTIST NAME INSTEAD OF "SERVER" or "LOCAL FILE"
-        // If artist is missing, fallback to source type
         source.innerText = song.artist || (song.source === 'LOCAL' ? 'LOCAL FILE' : 'UNKNOWN ARTIST');
 
         info.appendChild(title);
@@ -536,11 +603,10 @@ const LibraryManager = {
         return el;
     },
 
-    // Process a dropped file to add to local library
     addLocalSong: async function(file) {
         try {
             const zip = await JSZip.loadAsync(file);
-            const meta = await this.extractMetadata(zip); // Reuse extraction logic
+            const meta = await this.extractMetadata(zip); 
             
             localLibrary.push({
                 id: Date.now() + Math.random(),
@@ -551,7 +617,6 @@ const LibraryManager = {
                 source: "LOCAL"
             });
             
-            // Auto open library
             document.getElementById('add-song-modal').style.display = 'none';
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('library-view').style.display = 'flex';
@@ -563,11 +628,8 @@ const LibraryManager = {
         }
     },
 
-    // Helper: Extract Title/Artist/Art from a Zip object
     extractMetadata: async function(zip) {
-        let imageFile = null;
-        let iniFile = null;
-        let chartFile = null; 
+        let imageFile = null, iniFile = null, chartFile = null; 
 
         zip.forEach((relativePath, zipEntry) => {
             if (zipEntry.dir || zipEntry.name.startsWith('__MACOSX')) return;
@@ -577,33 +639,26 @@ const LibraryManager = {
             if (name.endsWith('.chart')) chartFile = zipEntry;
         });
 
-        // Extract Art
         let artUrl = null;
         if(imageFile) {
             const imgBlob = await imageFile.async("blob");
             artUrl = URL.createObjectURL(imgBlob);
         }
 
-        // Extract Name & Artist
-        let songTitle = "";
-        let songArtist = "";
+        let songTitle = "", songArtist = "";
         
-        // Priority 1: INI
         if (iniFile) {
             const iniText = await iniFile.async("string");
             const nameMatch = iniText.match(/^name\s*=\s*(.+)$/m);
             const artistMatch = iniText.match(/^artist\s*=\s*(.+)$/m);
-            
             if (nameMatch) songTitle = nameMatch[1].trim();
             if (artistMatch) songArtist = artistMatch[1].trim();
         }
 
-        // Priority 2: Chart File [Song] section
         if ((!songTitle || !songArtist) && chartFile) {
             const chartText = await chartFile.async("string");
             const nameMatch = chartText.match(/Name\s*=\s*"(.*?)"/);
             const artistMatch = chartText.match(/Artist\s*=\s*"(.*?)"/);
-            
             if(nameMatch && !songTitle) songTitle = nameMatch[1];
             if(artistMatch && !songArtist) songArtist = artistMatch[1];
         }
@@ -611,7 +666,6 @@ const LibraryManager = {
         return { title: songTitle, artist: songArtist, artUrl: artUrl };
     },
 
-    // Plays a song that is already loaded as a JSZip object
     playSong: async function(zip, artUrl) {
         const loader = document.getElementById('loading-overlay');
         const loadText = document.getElementById('loading-text');
@@ -620,14 +674,11 @@ const LibraryManager = {
         pFill.style.width = '100%';
         
         try {
-            let chartFile = null;
-            let audioFile = null;
-            let iniFile = null;
+            let chartFile = null, audioFile = null, iniFile = null;
 
             zip.forEach((relativePath, zipEntry) => {
                 if (zipEntry.dir || zipEntry.name.startsWith('__MACOSX')) return;
                 const name = zipEntry.name.toLowerCase();
-                
                 if (name.endsWith('.chart')) chartFile = zipEntry;
                 else if (name.endsWith('.opus') || name.endsWith('.ogg')) {
                     if(!name.includes('guitar') && !name.includes('rhythm') && !name.includes('drum')) {
@@ -639,25 +690,20 @@ const LibraryManager = {
 
             if (!chartFile) throw new Error("No .chart file found inside zip.");
 
-            // Parse INI for delay
             let delay = 0;
             if (iniFile) {
                 const iniText = await iniFile.async("string");
                 const delayMatch = iniText.match(/delay\s*=\s*(-?\d+)/i);
-                if (delayMatch) {
-                    delay = parseInt(delayMatch[1], 10) / 1000.0; 
-                }
+                if (delayMatch) delay = parseInt(delayMatch[1], 10) / 1000.0; 
             }
             songOffset = delay;
 
-            // Parse Chart
             loadText.innerText = "PARSING CHART...";
             const chartText = await chartFile.async("string");
             const notes = ChartParser.parse(chartText);
             
             if (notes.length === 0) throw new Error("No notes found in chart.");
 
-            // Decode Audio
             if(audioFile) {
                 loadText.innerText = "DECODING AUDIO...";
                 const audioData = await audioFile.async("arraybuffer");
@@ -668,12 +714,8 @@ const LibraryManager = {
                 bgmBuffer = null;
             }
 
-            // Set Background
-            if(artUrl) {
-                document.getElementById('bg-layer').style.backgroundImage = `url(${artUrl})`;
-            } else {
-                document.getElementById('bg-layer').style.backgroundImage = 'none';
-            }
+            if(artUrl) document.getElementById('bg-layer').style.backgroundImage = `url(${artUrl})`;
+            else document.getElementById('bg-layer').style.backgroundImage = 'none';
 
             document.getElementById('loading-overlay').style.display = 'none';
             document.getElementById('library-view').style.display = 'none';
@@ -695,7 +737,6 @@ const ChartParser = {
         let resolution = 192;
         let bpms = [{tick: 0, bpm: 120}];
         let currentSection = '';
-        
         let targetSection = 'ExpertSingle';
         if (!text.includes('[ExpertSingle]')) {
              if (text.includes('[ExpertGuitar]')) targetSection = 'ExpertGuitar';
@@ -705,10 +746,7 @@ const ChartParser = {
         for(let i=0; i<lines.length; i++) {
             let line = lines[i].trim();
             if(!line) continue;
-            if(line.startsWith('[') && line.endsWith(']')) {
-                currentSection = line.slice(1, -1);
-                continue;
-            }
+            if(line.startsWith('[') && line.endsWith(']')) { currentSection = line.slice(1, -1); continue; }
             if (line === '{' || line === '}') continue; 
 
             if (currentSection === 'Song') {
@@ -719,19 +757,14 @@ const ChartParser = {
             }
             if (currentSection === 'SyncTrack') {
                 const match = line.match(/^(\d+)\s*=\s*B\s*(\d+)/);
-                if (match) {
-                    const tick = parseInt(match[1]);
-                    const rawBpm = parseInt(match[2]);
-                    bpms.push({ tick: tick, bpm: rawBpm / 1000.0 });
-                }
+                if (match) bpms.push({ tick: parseInt(match[1]), bpm: parseInt(match[2]) / 1000.0 });
             }
             if (currentSection === targetSection) {
                 const match = line.match(/^(\d+)\s*=\s*N\s*(\d+)\s*(\d+)/);
                 if (match) {
-                    const tick = parseInt(match[1]);
                     const lane = parseInt(match[2]);
                     if (lane >= 0 && lane < 5) {
-                        notes.push({ tick: tick, lane: lane, hit: false, missed: false });
+                        notes.push({ tick: parseInt(match[1]), lane: lane, hit: false, missed: false });
                     }
                 }
             }
@@ -756,12 +789,7 @@ const ChartParser = {
             const timeFromLastBpm = (tickDelta / resolution) * (60 / bpms[currentBpmIndex].bpm);
             const absoluteTime = currentTime + timeFromLastBpm;
 
-            processedNotes.push({
-                time: absoluteTime,
-                lane: note.lane,
-                hit: false,
-                missed: false 
-            });
+            processedNotes.push({ time: absoluteTime, lane: note.lane, hit: false, missed: false });
         });
         return processedNotes;
     }
@@ -916,6 +944,12 @@ function startGame(notes) {
     songData = notes;
     totalNotesInSong = notes.length;
     notesHitCount = 0; score = 0; combo = 0; maxCombo = 0; multiplier = 1;
+    accumulated4xTime = 0; isThunderReady = false; isThunderActive = false; thunderTimeRemaining = 0;
+    
+    // UI Reset
+    document.body.classList.remove('thunder-active', 'thunder-ready');
+    document.getElementById('thunder-popup').style.display = 'none';
+    
     isPlaying = true; isSongFinished = false;
     while(notesGroup.children.length > 0) notesGroup.remove(notesGroup.children[0]);
     songData.forEach(note => {
@@ -961,16 +995,53 @@ function updateGame() {
     if(!isPlaying || !AudioEngine.ctx) return;
     const currentTime = AudioEngine.ctx.currentTime;
     const songTime = currentTime - bgmStartTime - songOffset;
+    const dt = 0.016;
+
     if(songData.length > 0) {
         const lastNote = songData[songData.length - 1];
         if (songTime > lastNote.time + 3.0) { endGame(); return; }
     }
+
+    // --- THUNDER LOGIC ---
+    // 1. Charge Mechanics (Only at 4x and not already active/ready)
+    if (multiplier === 4 && !isThunderActive && !isThunderReady) {
+        accumulated4xTime += dt;
+        if (accumulated4xTime >= TIME_TO_FILL_THUNDER) {
+            accumulated4xTime = TIME_TO_FILL_THUNDER;
+            isThunderReady = true;
+            document.body.classList.add('thunder-ready');
+            document.getElementById('thunder-popup').style.display = 'flex';
+        }
+        updateUI(); // Force update bar for blue fill
+    }
+
+    // 2. Active Mechanics
+    if (isThunderActive) {
+        thunderTimeRemaining -= dt;
+        multiplier = 8; // Force 8x
+        if (thunderTimeRemaining <= 0) {
+            isThunderActive = false;
+            isThunderReady = false;
+            accumulated4xTime = 0;
+            multiplier = 4; // Revert to 4x (assume player kept streak, standard mechanic)
+            document.body.classList.remove('thunder-active');
+            updateUI();
+        } else {
+            // Update Bar to drain
+            const bar = document.getElementById('multiplier-fill');
+            const pct = (thunderTimeRemaining / THUNDER_DURATION) * 100;
+            bar.style.width = pct + '%';
+        }
+    }
+
+    // Update Notes
     songData.forEach(note => {
         if (note.hit && !note.missed) { note.mesh.visible = false; return; }
         const timeDiff = note.time - songTime;
         const zPos = -timeDiff * NOTE_SPEED;
         if (zPos > 1.0 && !note.hit && !note.missed) {
-            note.missed = true; breakCombo();
+            note.missed = true; 
+            breakCombo();
             note.mesh.material.color.setHex(0x555555);
             note.mesh.material.emissive.setHex(0x000000);
             note.mesh.material.transparent = true;
@@ -982,8 +1053,28 @@ function updateGame() {
             note.mesh.visible = true;
         } else note.mesh.visible = false;
     });
-    updateFlames(0.016);
+    updateFlames(dt);
 }
+
+function activateThunder() {
+    if (isThunderReady && !isThunderActive) {
+        isThunderActive = true;
+        isThunderReady = false;
+        thunderTimeRemaining = THUNDER_DURATION;
+        document.body.classList.remove('thunder-ready');
+        document.body.classList.add('thunder-active');
+        document.getElementById('thunder-popup').style.display = 'none';
+        
+        // Flash Effect
+        const flash = document.getElementById('lightning-flash');
+        flash.style.opacity = 1;
+        // Double Flash
+        setTimeout(() => flash.style.opacity = 0, 100);
+        setTimeout(() => flash.style.opacity = 1, 200);
+        setTimeout(() => flash.style.opacity = 0, 400);
+    }
+}
+
 function checkHit(lane) {
     if (!isPlaying) return;
     const songTime = AudioEngine.ctx.currentTime - bgmStartTime - songOffset;
@@ -999,27 +1090,62 @@ function checkHit(lane) {
         }
     }
 }
+
 function addScore() {
     combo++; if(combo > maxCombo) maxCombo = combo; notesHitCount++;
-    multiplier = 1 + Math.floor(combo / 10); if(multiplier > 4) multiplier = 4;
-    score += 100 * multiplier; updateUI();
+    
+    // Only recalc multiplier if Thunder is NOT active (Thunder locks it at 8x)
+    if (!isThunderActive) {
+        multiplier = 1 + Math.floor(combo / NOTES_PER_MULTIPLIER); 
+        if(multiplier > 4) multiplier = 4;
+    }
+    
+    score += 100 * multiplier; 
+    updateUI();
 }
+
 function breakCombo() {
-    if(combo > 0) { combo = 0; multiplier = 1; updateUI(); AudioEngine.playMiss(); }
+    // If Thunder is active, combo/multiplier is protected
+    if (isThunderActive) return;
+
+    if(combo > 0) { 
+        combo = 0; 
+        multiplier = 1; 
+        // Reset charge on miss? Prompt implies cumulative, "doesn't need to be 30s consistently".
+        // BUT usually if you drop combo you drop out of 4x, so charging pauses.
+        // We do NOT reset accumulated4xTime here based on user request.
+        updateUI(); 
+        AudioEngine.playMiss(); 
+    }
 }
+
 function updateUI() {
     document.getElementById('score').innerText = score;
     document.getElementById('combo').innerText = combo;
-    const fill = (combo % 10) * 10;
     const el = document.getElementById('multiplier-fill');
-    el.style.width = (multiplier === 4 ? 100 : fill) + '%';
-    el.style.backgroundColor = multiplier === 4 ? '#0ff' : '#0f0';
+    
+    if (isThunderActive) {
+        // Handled in updateGame loop for smooth draining
+        document.getElementById('score-board').style.color = '#fff'; // Reset text color, handled by CSS class
+    } else if (isThunderReady) {
+        el.style.width = '100%';
+    } else if (multiplier === 4) {
+        // Show Thunder Charge Progress
+        const pct = (accumulated4xTime / TIME_TO_FILL_THUNDER) * 100;
+        el.style.width = pct + '%';
+        el.style.backgroundColor = '#00ffff'; // Neon Blue while filling
+    } else {
+        // Standard Multiplier Progress (Green)
+        const fill = (combo % NOTES_PER_MULTIPLIER) * (100 / NOTES_PER_MULTIPLIER);
+        el.style.width = fill + '%';
+        el.style.backgroundColor = '#00ff00';
+    }
 }
+
 function gameLoop() { gameLoopId = requestAnimationFrame(gameLoop); updateGame(); renderer.render(scene, camera); }
 
 // --- UI / Navigation Handlers ---
 
-// Main Menu
 document.getElementById('btn-open-library').addEventListener('click', () => {
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('library-view').style.display = 'flex';
@@ -1028,25 +1154,19 @@ document.getElementById('btn-open-library').addEventListener('click', () => {
 document.getElementById('btn-open-add').addEventListener('click', () => {
     document.getElementById('add-song-modal').style.display = 'flex';
 });
-
-// Library
 document.getElementById('btn-back-main').addEventListener('click', () => {
     document.getElementById('library-view').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
 });
-
-// Add Song Modal
 const closeAdd = () => document.getElementById('add-song-modal').style.display = 'none';
 document.getElementById('btn-close-add').addEventListener('click', closeAdd);
 document.getElementById('btn-browse').addEventListener('click', () => document.getElementById('file-input').click());
 
-// Drag & Drop on Modal
 const dropZone = document.getElementById('drop-zone');
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
 dropZone.addEventListener('drop', e => {
-    e.preventDefault(); 
-    dropZone.classList.remove('hover');
+    e.preventDefault(); dropZone.classList.remove('hover');
     if(e.dataTransfer.items) {
         [...e.dataTransfer.items].forEach(item => {
             if (item.kind === 'file') LibraryManager.addLocalSong(item.getAsFile());
@@ -1054,14 +1174,11 @@ dropZone.addEventListener('drop', e => {
     }
 });
 
-// File Input
 document.getElementById('file-input').addEventListener('change', (e) => {
     if(e.target.files.length > 0) {
         [...e.target.files].forEach(file => LibraryManager.addLocalSong(file));
     }
 });
-
-// Results
 document.getElementById('btn-restart').addEventListener('click', () => {
     document.getElementById('results-screen').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
@@ -1073,8 +1190,17 @@ function handleInput(lane, isDown) {
     const m = hitMarkers[lane];
     if(isDown) { m.fill.material.opacity = 0.6; checkHit(lane); } else m.fill.material.opacity = 0.0;
 }
-window.addEventListener('keydown', e => { if (KEYS.hasOwnProperty(e.code) && !e.repeat) handleInput(KEYS[e.code], true); });
+
+window.addEventListener('keydown', e => { 
+    if (e.code === 'Space') {
+        activateThunder();
+        e.preventDefault();
+        return;
+    }
+    if (KEYS.hasOwnProperty(e.code) && !e.repeat) handleInput(KEYS[e.code], true); 
+});
 window.addEventListener('keyup', e => { if (KEYS.hasOwnProperty(e.code)) handleInput(KEYS[e.code], false); });
+
 const tArea = document.getElementById('touch-controls');
 tArea.addEventListener('touchstart', e => { e.preventDefault(); for(let i=0; i<e.changedTouches.length; i++) { const t = e.changedTouches[i]; const el = document.elementFromPoint(t.clientX, t.clientY); if(el && el.dataset.lane) { el.classList.add('active'); handleInput(parseInt(el.dataset.lane), true); } } }, {passive:false});
 tArea.addEventListener('touchend', () => { const els = document.querySelectorAll('.touch-zone'); els.forEach((el, idx) => { el.classList.remove('active'); handleInput(idx, false); }); });
