@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WCL HERO</title>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Press Start 2P', cursive;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        /* Background Art Layer - Full Screen */
+        #bg-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.3;
+            filter: blur(8px) grayscale(40%);
+            z-index: 1;
+            transition: opacity 1s;
+        }
+
+        /* Game Container - Responsive */
+        #game-wrapper {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5;
+            display: flex;
+            justify-content: center;
+        }
+
+        #game-canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Desktop Mode Styles */
+        @media (min-width: 800px) {
+            #game-canvas-container {
+                width: 600px; /* Fixed width for vertical rhythm game feel */
+                border-left: 4px solid #333;
+                border-right: 4px solid #333;
+                box-shadow: 0 0 50px rgba(0,0,0,0.8);
+                background: #000;
+            }
+            /* Hide mobile controls on desktop */
+            #touch-controls { display: none !important; }
+            
+            /* Adjust Score board for desktop */
+            #score-board {
+                width: 600px;
+                left: 50% !important;
+                transform: translateX(-50%);
+                padding: 20px 0 !important;
+                width: 560px !important; /* width minus padding */
+            }
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #score-board {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            color: #fff;
+            text-shadow: 3px 3px 0 #000;
+            font-size: 16px;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        #multiplier-bar {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #fff;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        #multiplier-fill {
+            height: 100%;
+            width: 0%;
+            background: #00ff00;
+            transition: width 0.1s;
+        }
+
+        #combo-text {
+            color: #ff0;
+            margin-top: 5px;
+        }
+
+        #touch-controls {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 35vh;
+            display: flex;
+            pointer-events: auto;
+            z-index: 20;
+            opacity: 0.2; 
+        }
+
+        .touch-zone {
+            flex: 1;
+            border-top: 2px solid rgba(255,255,255,0.2);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+        }
+        .touch-zone:active, .touch-zone.active {
+            background: linear-gradient(to top, rgba(255,255,255,0.4), transparent);
+        }
+
+        /* Screens */
+        .overlay-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            pointer-events: auto;
+            color: white;
+            transition: opacity 0.5s;
+        }
+
+        h1 {
+            color: #ff00ff;
+            text-shadow: 4px 4px #00ffff;
+            font-size: 40px;
+            text-align: center;
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: #000;
+            border: 4px solid #fff;
+            color: #fff;
+            padding: 20px 30px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.1s;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            background: #222;
+            border-color: #ff00ff;
+        }
+        
+        #file-input { display: none; }
+
+        #instructions {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #aaa;
+            text-align: center;
+            line-height: 1.8;
+            padding: 0 20px;
+        }
+
+        .key-badge {
+            display: inline-block;
+            padding: 3px 6px;
+            background: #333;
+            border: 1px solid #666;
+            border-radius: 4px;
+            margin: 0 2px;
+            color: #fff;
+        }
+
+        #loading-text {
+            color: #0f0;
+            margin-top: 10px;
+            font-size: 12px;
+            min-height: 1.5em;
+        }
+
+        /* Results Screen Specifics */
+        #results-screen { display: none; }
+        .stat-row {
+            margin: 10px 0;
+            font-size: 18px;
+            text-align: center;
+        }
+        .stars {
+            color: #ffd700;
+            font-size: 40px;
+            margin: 20px 0;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 5px;
+        }
+        .grade {
+            font-size: 60px;
+            color: #00ff00;
+            text-shadow: 4px 4px 0 #000;
+            margin-bottom: 20px;
+        }
+
+        /* Scanlines */
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.15) 50%,
+                rgba(0,0,0,0.15)
+            );
+            background-size: 100% 4px;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 25;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="bg-layer"></div>
+    
+    <div id="game-wrapper">
+        <div id="game-canvas-container"></div>
+    </div>
+    
+    <div class="scanlines"></div>
+
+    <div id="ui-layer">
+        <div id="score-board">
+            SCORE: <span id="score">0</span>
+            <div id="combo-text">COMBO: <span id="combo">0</span>x</div>
+            <div id="multiplier-bar"><div id="multiplier-fill"></div></div>
+        </div>
+        
+        <div id="touch-controls">
+            <div class="touch-zone" data-lane="0"></div>
+            <div class="touch-zone" data-lane="1"></div>
+            <div class="touch-zone" data-lane="2"></div>
+            <div class="touch-zone" data-lane="3"></div>
+            <div class="touch-zone" data-lane="4"></div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="overlay-screen">
+        <h1>WCL HERO</h1>
+        <button class="btn" id="btn-demo">Play Iris (Demo)</button>
+        <button class="btn" id="btn-load">Import Custom Zip</button>
+        <input type="file" id="file-input" accept=".zip,application/zip,application/x-zip-compressed">
+        
+        <div id="loading-text"></div>
+
+        <div id="instructions">
+            <p>KEYS: <span class="key-badge">D</span> <span class="key-badge">F</span> <span class="key-badge">J</span> <span class="key-badge">K</span> <span class="key-badge">L</span></p>
+        </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="results-screen" class="overlay-screen">
+        <h1>SONG CLEAR!</h1>
+        <div class="grade" id="res-grade">S</div>
+        <div class="stars" id="res-stars">★★★★★</div>
+        
+        <div class="stat-row">SCORE: <span id="res-score">0</span></div>
+        <div class="stat-row">NOTES HIT: <span id="res-hit">0</span> / <span id="res-total">0</span></div>
+        <div class="stat-row">PERCENT: <span id="res-percent">0</span>%</div>
+        <div class="stat-row">COMBO: <span id="res-combo">0</span></div>
+
+        <button class="btn" id="btn-restart">Back to Menu</button>
+    </div>
+
+<script>
+/**
+ * WCL HERO
+ * Desktop Optimized + External Demo Support
+ */
+
+// --- Constants ---
+const LANES = 5;
+const COLORS = [0x00ff00, 0xff0000, 0xffff00, 0x0000ff, 0xffa500]; // G R Y B O
+const LANE_WIDTH = 1.2;
+const HIT_WINDOW = 0.140; 
+const NOTE_SPEED = 30; 
+// Keys: D F J K L
+const KEYS = { 'KeyD': 0, 'KeyF': 1, 'KeyJ': 2, 'KeyK': 3, 'KeyL': 4 };
+
+// Game State
+let isPlaying = false;
+let isSongFinished = false;
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let multiplier = 1;
+let songData = []; 
+let totalNotesInSong = 0;
+let notesHitCount = 0;
+
+// Audio
+let audioCtx;
+let bgmSource = null; 
+let bgmBuffer = null;
+let bgmStartTime = 0;
+let songOffset = 0; 
+
+// Three.js Globals
+let scene, camera, renderer;
+let fretBoardGroup, notesGroup, flamesGroup;
+let hitMarkers = [];
+let flames = [];
+let gameLoopId;
+
+// --- Zip & File Handling ---
+const ZipLoader = {
+    // Process a blob (from file input or fetch)
+    processZip: async function(blob) {
+        const status = document.getElementById('loading-text');
+        status.innerText = "Loading Data...";
+        
+        try {
+            const zip = await JSZip.loadAsync(blob);
+            let chartFile = null;
+            let audioFile = null;
+            let imageFile = null;
+            let iniFile = null;
+
+            // Deep Search for files
+            zip.forEach((relativePath, zipEntry) => {
+                if (zipEntry.dir || zipEntry.name.startsWith('__MACOSX')) return;
+                
+                const name = zipEntry.name.toLowerCase();
+                
+                if (name.endsWith('.chart')) chartFile = zipEntry;
+                else if (name.endsWith('.opus') || name.endsWith('.ogg')) {
+                    if(!name.includes('guitar') && !name.includes('rhythm') && !name.includes('drum')) {
+                         audioFile = zipEntry;
+                    }
+                }
+                else if (name.endsWith('album.jpg') || name.endsWith('album.png')) imageFile = zipEntry;
+                else if (name.endsWith('song.ini')) iniFile = zipEntry;
+            });
+
+            if (!chartFile) throw new Error("No .chart file found.");
+            
+            // 1. INI
+            let delay = 0;
+            if (iniFile) {
+                const iniText = await iniFile.async("string");
+                const delayMatch = iniText.match(/delay\s*=\s*(-?\d+)/i);
+                if (delayMatch) {
+                    delay = parseInt(delayMatch[1], 10) / 1000.0; 
+                    console.log("Song Delay found:", delay);
+                }
+            }
+            songOffset = delay;
+
+            // 2. Chart
+            status.innerText = "Parsing Chart...";
+            const chartText = await chartFile.async("string");
+            const notes = ChartParser.parse(chartText);
+            
+            if (notes.length === 0) throw new Error("No notes found in chart.");
+
+            // 3. Audio
+            if(audioFile) {
+                status.innerText = "Decoding Audio (Wait)...";
+                const audioData = await audioFile.async("arraybuffer");
+                AudioEngine.init();
+                bgmBuffer = await AudioEngine.ctx.decodeAudioData(audioData);
+            } else {
+                bgmBuffer = null;
+            }
+
+            // 4. Image
+            if(imageFile) {
+                const imgBlob = await imageFile.async("blob");
+                const url = URL.createObjectURL(imgBlob);
+                document.getElementById('bg-layer').style.backgroundImage = `url(${url})`;
+            }
+
+            status.innerText = "Ready!";
+            setTimeout(() => startGame(notes), 500);
+
+        } catch (e) {
+            console.error(e);
+            status.innerText = "Error: " + e.message;
+            alert("Load Error: " + e.message + "\n\n(For Demo: Ensure 'demo.zip' is in the same folder)");
+        }
+    }
+};
+
+// --- Chart Parser ---
+const ChartParser = {
+    parse: function(text) {
+        const lines = text.split(/\r?\n/);
+        let notes = [];
+        let resolution = 192;
+        let bpms = [{tick: 0, bpm: 120}];
+        let currentSection = '';
+        
+        let targetSection = 'ExpertSingle';
+        if (!text.includes('[ExpertSingle]')) {
+             if (text.includes('[ExpertGuitar]')) targetSection = 'ExpertGuitar';
+             else if (text.includes('[HardSingle]')) targetSection = 'HardSingle';
+        }
+
+        for(let i=0; i<lines.length; i++) {
+            let line = lines[i].trim();
+            if(!line) continue;
+            if(line.startsWith('[') && line.endsWith(']')) {
+                currentSection = line.slice(1, -1);
+                continue;
+            }
+            if (line === '{' || line === '}') continue; 
+
+            if (currentSection === 'Song') {
+                if (line.includes('Resolution')) {
+                    const parts = line.split('=');
+                    if (parts[1]) resolution = parseInt(parts[1].trim());
+                }
+            }
+
+            if (currentSection === 'SyncTrack') {
+                const match = line.match(/^(\d+)\s*=\s*B\s*(\d+)/);
+                if (match) {
+                    const tick = parseInt(match[1]);
+                    const rawBpm = parseInt(match[2]);
+                    bpms.push({ tick: tick, bpm: rawBpm / 1000.0 });
+                }
+            }
+
+            if (currentSection === targetSection) {
+                const match = line.match(/^(\d+)\s*=\s*N\s*(\d+)\s*(\d+)/);
+                if (match) {
+                    const tick = parseInt(match[1]);
+                    const lane = parseInt(match[2]);
+                    if (lane >= 0 && lane < 5) {
+                        notes.push({ tick: tick, lane: lane, hit: false, missed: false });
+                    }
+                }
+            }
+        }
+
+        bpms.sort((a,b) => a.tick - b.tick);
+        
+        let processedNotes = [];
+        let currentBpmIndex = 0;
+        let currentTime = 0;
+        let currentTick = 0;
+
+        notes.sort((a,b) => a.tick - b.tick);
+
+        notes.forEach(note => {
+            while (currentBpmIndex < bpms.length - 1 && bpms[currentBpmIndex + 1].tick <= note.tick) {
+                const nextBpm = bpms[currentBpmIndex + 1];
+                const tickDelta = nextBpm.tick - currentTick;
+                currentTime += (tickDelta / resolution) * (60 / bpms[currentBpmIndex].bpm);
+                currentTick = nextBpm.tick;
+                currentBpmIndex++;
+            }
+
+            const tickDelta = note.tick - currentTick;
+            const timeFromLastBpm = (tickDelta / resolution) * (60 / bpms[currentBpmIndex].bpm);
+            const absoluteTime = currentTime + timeFromLastBpm;
+
+            processedNotes.push({
+                time: absoluteTime,
+                lane: note.lane,
+                hit: false,
+                missed: false 
+            });
+        });
+
+        return processedNotes;
+    }
+};
+
+// --- Audio Engine ---
+const AudioEngine = {
+    ctx: null,
+    sfxGain: null,
+    bgmGain: null,
+    
+    init: function() {
+        if(this.ctx) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+        
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.value = 0.5;
+        this.sfxGain.connect(this.ctx.destination);
+
+        this.bgmGain = this.ctx.createGain();
+        this.bgmGain.gain.value = 0.8;
+        this.bgmGain.connect(this.ctx.destination);
+    },
+
+    playBGM: function() {
+        if(!bgmBuffer || !this.ctx) return;
+        if(bgmSource) try{ bgmSource.stop(); }catch(e){}
+        
+        bgmSource = this.ctx.createBufferSource();
+        bgmSource.buffer = bgmBuffer;
+        bgmSource.connect(this.bgmGain);
+        
+        bgmStartTime = this.ctx.currentTime + 3.0; 
+        bgmSource.start(bgmStartTime); 
+    },
+
+    playNote: function(lane) {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const freqs = [196.00, 220.00, 246.94, 293.66, 329.63]; 
+        osc.type = 'triangle'; 
+        osc.frequency.value = freqs[lane] || 220;
+        const now = this.ctx.currentTime;
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start();
+        osc.stop(now + 0.15);
+    },
+
+    playMiss: function() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 80;
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+    }
+};
+
+// --- Graphics ---
+function initGraphics() {
+    const container = document.getElementById('game-canvas-container');
+    
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.05);
+
+    camera = new THREE.PerspectiveCamera(70, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 2.5, 6); 
+    camera.lookAt(0, 0, -8);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(0, 10, 5);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+    fretBoardGroup = new THREE.Group();
+    notesGroup = new THREE.Group();
+    flamesGroup = new THREE.Group();
+    scene.add(fretBoardGroup);
+    scene.add(notesGroup);
+    scene.add(flamesGroup);
+
+    // Highway
+    const boardGeo = new THREE.PlaneGeometry(LANES * LANE_WIDTH + 1, 1000);
+    const boardMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8 });
+    const board = new THREE.Mesh(boardGeo, boardMat);
+    board.rotation.x = -Math.PI / 2;
+    board.position.z = -500;
+    fretBoardGroup.add(board);
+
+    // Dividers
+    for (let i = 0; i <= LANES; i++) {
+        const x = (i * LANE_WIDTH) - ((LANES * LANE_WIDTH) / 2);
+        const lineGeo = new THREE.PlaneGeometry(0.05, 1000);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0x555555 });
+        const line = new THREE.Mesh(lineGeo, lineMat);
+        line.rotation.x = -Math.PI / 2;
+        line.position.set(x, 0.01, -500);
+        fretBoardGroup.add(line);
+    }
+
+    // Receptors
+    for(let i=0; i<LANES; i++) {
+        const x = ((i + 0.5) * LANE_WIDTH) - ((LANES * LANE_WIDTH) / 2);
+        const ringGeo = new THREE.RingGeometry(0.4, 0.5, 4);
+        ringGeo.rotateZ(Math.PI/4);
+        const ringMat = new THREE.MeshBasicMaterial({ color: COLORS[i] });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(x, 0.02, 0);
+        
+        const fillGeo = new THREE.CircleGeometry(0.35, 4);
+        fillGeo.rotateZ(Math.PI/4);
+        const fillMat = new THREE.MeshBasicMaterial({ color: COLORS[i], transparent: true, opacity: 0.0 });
+        const fill = new THREE.Mesh(fillGeo, fillMat);
+        fill.rotation.x = -Math.PI / 2;
+        fill.position.set(x, 0.03, 0);
+
+        hitMarkers.push({ ring, fill });
+        fretBoardGroup.add(ring);
+        fretBoardGroup.add(fill);
+    }
+}
+
+function createNoteMesh(lane, color) {
+    const geometry = new THREE.OctahedronGeometry(0.4, 0);
+    geometry.scale(1.2, 0.6, 1.2);
+    const material = new THREE.MeshPhongMaterial({ 
+        color: color, emissive: color, emissiveIntensity: 0.5, shininess: 80 
+    });
+    return new THREE.Mesh(geometry, material);
+}
+
+function spawnFlame(lane) {
+    const x = ((lane + 0.5) * LANE_WIDTH) - ((LANES * LANE_WIDTH) / 2);
+    const color = COLORS[lane];
+    for(let i=0; i<8; i++) {
+        const geo = new THREE.ConeGeometry(0.05, 0.5 + Math.random(), 3);
+        const mat = new THREE.MeshBasicMaterial({ color: color });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x + (Math.random()-0.5)*0.5, 0, (Math.random()-0.5)*0.5);
+        mesh.rotation.x = Math.random()-0.5;
+        mesh.rotation.z = Math.random()-0.5;
+        flamesGroup.add(mesh);
+        flames.push({ mesh, life: 1.0, velocity: new THREE.Vector3(0, 3+Math.random()*2, 0) });
+    }
+}
+
+function updateFlames(dt) {
+    for (let i = flames.length - 1; i >= 0; i--) {
+        const p = flames[i];
+        p.life -= dt * 3.5;
+        if(p.life <= 0) {
+            flamesGroup.remove(p.mesh);
+            flames.splice(i, 1);
+        } else {
+            p.mesh.position.addScaledVector(p.velocity, dt);
+            p.mesh.scale.setScalar(p.life);
+        }
+    }
+}
+
+// --- Gameplay ---
+function startGame(notes) {
+    if(isPlaying) return;
+    
+    AudioEngine.init();
+    songData = notes;
+    totalNotesInSong = notes.length;
+    notesHitCount = 0;
+    score = 0;
+    combo = 0;
+    maxCombo = 0;
+    multiplier = 1;
+    isPlaying = true;
+    isSongFinished = false;
+    
+    while(notesGroup.children.length > 0) notesGroup.remove(notesGroup.children[0]);
+    
+    songData.forEach(note => {
+        const mesh = createNoteMesh(note.lane, COLORS[note.lane]);
+        mesh.position.set(0, -200, 0);
+        note.mesh = mesh;
+        note.hit = false;
+        note.missed = false; 
+        notesGroup.add(mesh);
+    });
+
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('results-screen').style.display = 'none';
+    updateUI();
+
+    if(bgmBuffer) {
+        AudioEngine.playBGM();
+    } else {
+        bgmStartTime = AudioEngine.ctx.currentTime + 3.0;
+    }
+
+    cancelAnimationFrame(gameLoopId);
+    gameLoop();
+}
+
+function endGame() {
+    isPlaying = false;
+    isSongFinished = true;
+    if(bgmSource) try { bgmSource.stop(); } catch(e){}
+
+    // Stats
+    const percent = totalNotesInSong > 0 ? Math.floor((notesHitCount / totalNotesInSong) * 100) : 0;
+    let stars = "☆☆☆☆☆";
+    let grade = "F";
+    let starCount = 0;
+
+    if (percent >= 98) { starCount = 5; grade = "S"; }
+    else if (percent >= 90) { starCount = 5; grade = "A"; }
+    else if (percent >= 80) { starCount = 4; grade = "B"; }
+    else if (percent >= 70) { starCount = 3; grade = "C"; }
+    else if (percent >= 60) { starCount = 2; grade = "D"; }
+    else if (percent >= 40) { starCount = 1; grade = "E"; }
+
+    let starStr = "";
+    for(let i=0; i<5; i++) starStr += (i < starCount ? "★" : "☆");
+
+    document.getElementById('res-score').innerText = score;
+    document.getElementById('res-hit').innerText = notesHitCount;
+    document.getElementById('res-total').innerText = totalNotesInSong;
+    document.getElementById('res-percent').innerText = percent;
+    document.getElementById('res-combo').innerText = maxCombo;
+    document.getElementById('res-stars').innerText = starStr;
+    document.getElementById('res-grade').innerText = grade;
+    document.getElementById('res-grade').style.color = (grade === 'S' || grade === 'A') ? '#00ff00' : (grade === 'F' ? '#ff0000' : '#ffff00');
+
+    document.getElementById('results-screen').style.display = 'flex';
+}
+
+function updateGame() {
+    if(!isPlaying || !AudioEngine.ctx) return;
+    
+    // Time Sync
+    const currentTime = AudioEngine.ctx.currentTime;
+    const songTime = currentTime - bgmStartTime - songOffset;
+    
+    // Check End
+    if(songData.length > 0) {
+        const lastNote = songData[songData.length - 1];
+        if (songTime > lastNote.time + 3.0) {
+            endGame();
+            return;
+        }
+    }
+
+    // Update Notes
+    songData.forEach(note => {
+        if (note.hit && !note.missed) {
+            note.mesh.visible = false;
+            return;
+        }
+
+        const timeDiff = note.time - songTime;
+        const zPos = -timeDiff * NOTE_SPEED;
+
+        // MISS LOGIC
+        if (zPos > 1.0 && !note.hit && !note.missed) {
+            note.missed = true;
+            breakCombo();
+            
+            note.mesh.material.color.setHex(0x555555);
+            note.mesh.material.emissive.setHex(0x000000);
+            note.mesh.material.transparent = true;
+            note.mesh.material.opacity = 0.3; 
+        }
+
+        if (zPos > -150 && zPos < 50) {
+            const x = ((note.lane + 0.5) * LANE_WIDTH) - ((LANES * LANE_WIDTH) / 2);
+            note.mesh.position.set(x, 0.4, zPos);
+            note.mesh.visible = true;
+        } else {
+            note.mesh.visible = false;
+        }
+    });
+
+    updateFlames(0.016);
+}
+
+function checkHit(lane) {
+    if (!isPlaying) return;
+    const songTime = AudioEngine.ctx.currentTime - bgmStartTime - songOffset;
+    
+    const validNotes = songData.filter(n => !n.hit && !n.missed && n.lane === lane);
+    if(validNotes.length > 0) {
+        const note = validNotes[0];
+        const diff = Math.abs(note.time - songTime);
+        
+        if (diff < HIT_WINDOW) {
+            note.hit = true;
+            note.mesh.visible = false; 
+            addScore();
+            spawnFlame(lane);
+            AudioEngine.playNote(lane);
+            hitMarkers[lane].ring.scale.setScalar(1.3);
+            setTimeout(() => hitMarkers[lane].ring.scale.setScalar(1), 80);
+        }
+    }
+}
+
+function addScore() {
+    combo++;
+    if(combo > maxCombo) maxCombo = combo;
+    notesHitCount++;
+    multiplier = 1 + Math.floor(combo / 10);
+    if(multiplier > 4) multiplier = 4;
+    score += 100 * multiplier;
+    updateUI();
+}
+
+function breakCombo() {
+    if(combo > 0) {
+        combo = 0;
+        multiplier = 1;
+        updateUI();
+        AudioEngine.playMiss();
+    }
+}
+
+function updateUI() {
+    document.getElementById('score').innerText = score;
+    document.getElementById('combo').innerText = combo;
+    const fill = (combo % 10) * 10;
+    const el = document.getElementById('multiplier-fill');
+    el.style.width = (multiplier === 4 ? 100 : fill) + '%';
+    el.style.backgroundColor = multiplier === 4 ? '#0ff' : '#0f0';
+}
+
+function gameLoop() {
+    gameLoopId = requestAnimationFrame(gameLoop);
+    updateGame();
+    renderer.render(scene, camera);
+}
+
+// --- Inputs ---
+function handleInput(lane, isDown) {
+    if (lane < 0 || lane >= LANES) return;
+    const m = hitMarkers[lane];
+    if(isDown) {
+        m.fill.material.opacity = 0.6;
+        checkHit(lane);
+    } else {
+        m.fill.material.opacity = 0.0;
+    }
+}
+
+window.addEventListener('keydown', e => {
+    if (KEYS.hasOwnProperty(e.code) && !e.repeat) handleInput(KEYS[e.code], true);
+});
+window.addEventListener('keyup', e => {
+    if (KEYS.hasOwnProperty(e.code)) handleInput(KEYS[e.code], false);
+});
+
+// Touch
+const tArea = document.getElementById('touch-controls');
+tArea.addEventListener('touchstart', e => {
+    e.preventDefault();
+    for(let i=0; i<e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        if(el && el.dataset.lane) {
+            el.classList.add('active');
+            handleInput(parseInt(el.dataset.lane), true);
+        }
+    }
+}, {passive:false});
+tArea.addEventListener('touchend', () => {
+    const els = document.querySelectorAll('.touch-zone');
+    els.forEach((el, idx) => {
+        el.classList.remove('active');
+        handleInput(idx, false);
+    });
+});
+
+// --- Boot ---
+document.getElementById('btn-demo').addEventListener('click', () => {
+    const status = document.getElementById('loading-text');
+    status.innerText = "Fetching demo.zip...";
+    
+    // FETCH THE EXTERNAL ZIP
+    fetch('demo.zip')
+        .then(response => {
+            if (!response.ok) throw new Error("File 'demo.zip' not found");
+            return response.blob();
+        })
+        .then(blob => {
+            ZipLoader.processZip(blob);
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Could not load 'demo.zip'.\n\nPlease rename your zip file to 'demo.zip' and place it in the same folder as this HTML file.");
+            status.innerText = "Error loading demo.";
+        });
+});
+
+document.getElementById('btn-load').addEventListener('click', () => document.getElementById('file-input').click());
+document.getElementById('file-input').addEventListener('change', (e) => {
+    if(e.target.files[0]) ZipLoader.processZip(e.target.files[0]);
+});
+document.getElementById('btn-restart').addEventListener('click', () => {
+    document.getElementById('results-screen').style.display = 'none';
+    document.getElementById('start-screen').style.display = 'flex';
+});
+
+initGraphics();
+window.addEventListener('resize', () => {
+    const container = document.getElementById('game-canvas-container');
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+});
+
+</script>
+</body>
+</html>
