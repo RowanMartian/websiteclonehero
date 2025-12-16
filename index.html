@@ -581,6 +581,13 @@
         <button class="btn" id="btn-restart">Back to Menu</button>
     </div>
 
+    <!-- Pause Menu -->
+    <div id="pause-menu" class="overlay-screen" style="display: none;">
+        <h1 style="font-size: 40px; margin-bottom: 20px; color: #ff0; text-shadow: 0 0 10px #ff0;">PAUSED</h1>
+        <button class="btn" id="btn-resume">RESUME</button>
+        <button class="btn" id="btn-quit" style="border-color: #f00; color: #f00;">QUIT TO MENU</button>
+    </div>
+
 <script>
 /**
  * WCL HERO: Library Edition
@@ -594,11 +601,14 @@ const HIT_WINDOW = 0.140;
 const NOTE_SPEED = 30; 
 const KEYS = { 'KeyD': 0, 'KeyF': 1, 'KeyJ': 2, 'KeyK': 3, 'KeyL': 4 };
 const NOTES_PER_MULTIPLIER = 20; 
-const TIME_TO_FILL_THUNDER = 30; 
+const NOTES_TO_FILL_THUNDER = 150; 
 const THUNDER_DURATION = 15;     
 
 // Hardcoded Server Song List
 const SERVER_SONGS = [
+    "Misirlou.zip",
+    "1979.zip",
+    "Whereismymind.zip",
     "Youmightthink.zip",
     "Babaoriley.zip",
     "Basketcase.zip",
@@ -618,6 +628,7 @@ const SERVER_SONGS = [
 
 // Game State
 let isPlaying = false;
+let isPaused = false;
 let score = 0, combo = 0, maxCombo = 0, multiplier = 1;
 let songData = [], totalNotesInSong = 0, notesHitCount = 0;
 let activeNoteStartIndex = 0; // Optimization: Sliding Window
@@ -625,7 +636,7 @@ let audioCtx, bgmSource, bgmBuffer, bgmStartTime = 0, songOffset = 0;
 let gameLoopId;
 
 // Thunder Mechanics
-let accumulated4xTime = 0;
+let thunderCharge = 0;
 let isThunderReady = false;
 let isThunderActive = false;
 let thunderTimeRemaining = 0;
@@ -1238,13 +1249,32 @@ function updateFlames(dt) {
 }
 
 // --- Gameplay ---
+function setThunderVisuals(active) {
+    const tColor = new THREE.Color(0x00ffff);
+    NOTE_MATS.forEach((m, i) => {
+        if(active) { m.color.set(tColor); m.emissive.set(tColor); }
+        else { m.color.setHex(COLORS[i]); m.emissive.setHex(COLORS[i]); }
+    });
+    hitMarkers.forEach((o, i) => {
+        if(active) { o.ring.material.color.set(tColor); o.fill.material.color.set(tColor); }
+        else { o.ring.material.color.setHex(COLORS[i]); o.fill.material.color.setHex(COLORS[i]); }
+    });
+    FLAME_MATS.forEach((m, i) => {
+        if(active) m.color.set(tColor);
+        else m.color.setHex(COLORS[i]);
+    });
+}
+
 function startGame(notes) {
     if(isPlaying) return;
     songData = notes;
     totalNotesInSong = notes.length;
     notesHitCount = 0; score = 0; combo = 0; maxCombo = 0; multiplier = 1;
-    accumulated4xTime = 0; isThunderReady = false; isThunderActive = false; thunderTimeRemaining = 0;
+    thunderCharge = 0; isThunderReady = false; isThunderActive = false; thunderTimeRemaining = 0;
     activeNoteStartIndex = 0; // Reset scanner
+    isPaused = false;
+    
+    setThunderVisuals(false); // Ensure visuals are reset
     
     // UI Reset
     document.body.classList.remove('thunder-active', 'thunder-ready');
@@ -1308,28 +1338,17 @@ function updateGame() {
     }
 
     // --- THUNDER LOGIC ---
-    if (multiplier === 4 && !isThunderActive && !isThunderReady) {
-        accumulated4xTime += dt;
-        if (accumulated4xTime >= TIME_TO_FILL_THUNDER) {
-            accumulated4xTime = TIME_TO_FILL_THUNDER;
-            isThunderReady = true;
-            document.body.classList.add('thunder-ready');
-            document.getElementById('thunder-popup').style.display = 'flex';
-            StormSystem.triggerFlash(0.5); 
-        }
-        updateUI(); 
-    }
-
     if (isThunderActive) {
         thunderTimeRemaining -= dt;
         multiplier = 8; 
         if (thunderTimeRemaining <= 0) {
             isThunderActive = false;
             isThunderReady = false;
-            accumulated4xTime = 0;
+            thunderCharge = 0;
             multiplier = 4; 
             document.body.classList.remove('thunder-active');
             updateUI();
+            setThunderVisuals(false); // Reset visuals
         } else {
             const pct = (thunderTimeRemaining / THUNDER_DURATION) * 100;
             const bar = document.getElementById('multiplier-fill');
@@ -1398,11 +1417,13 @@ function activateThunder() {
     if (isThunderReady && !isThunderActive) {
         isThunderActive = true;
         isThunderReady = false;
+        thunderCharge = 0;
         thunderTimeRemaining = THUNDER_DURATION;
         document.body.classList.remove('thunder-ready');
         document.body.classList.add('thunder-active');
         document.getElementById('thunder-popup').style.display = 'none';
         
+        setThunderVisuals(true);
         StormSystem.triggerFlash(1.0); 
     }
 }
@@ -1435,6 +1456,19 @@ function checkHit(lane) {
 
 function addScore() {
     combo++; if(combo > maxCombo) maxCombo = combo; notesHitCount++;
+    
+    // Thunder Charge Logic
+    if (!isThunderActive && !isThunderReady) {
+        thunderCharge++;
+        if (thunderCharge >= NOTES_TO_FILL_THUNDER) {
+            thunderCharge = NOTES_TO_FILL_THUNDER;
+            isThunderReady = true;
+            document.body.classList.add('thunder-ready');
+            document.getElementById('thunder-popup').style.display = 'flex';
+            StormSystem.triggerFlash(0.5);
+        }
+    }
+
     if (!isThunderActive) {
         multiplier = 1 + Math.floor(combo / NOTES_PER_MULTIPLIER); 
         if(multiplier > 4) multiplier = 4;
@@ -1464,7 +1498,7 @@ function updateUI() {
     } else if (isThunderReady) {
         el.style.width = '100%';
     } else if (multiplier === 4) {
-        const pct = (accumulated4xTime / TIME_TO_FILL_THUNDER) * 100;
+        const pct = (thunderCharge / NOTES_TO_FILL_THUNDER) * 100;
         el.style.width = pct + '%';
         el.style.backgroundColor = '#00ffff'; 
     } else {
@@ -1474,7 +1508,48 @@ function updateUI() {
     }
 }
 
-function gameLoop() { gameLoopId = requestAnimationFrame(gameLoop); updateGame(); renderer.render(scene, camera); }
+function gameLoop() { 
+    gameLoopId = requestAnimationFrame(gameLoop); 
+    if (!isPaused) updateGame(); 
+    renderer.render(scene, camera); 
+}
+
+// --- Pause & Menu Functions ---
+
+async function togglePause() {
+    if (!isPlaying) return;
+    
+    isPaused = !isPaused;
+    
+    if (isPaused) {
+        document.getElementById('pause-menu').style.display = 'flex';
+        if (AudioEngine.ctx) await AudioEngine.ctx.suspend();
+    } else {
+        document.getElementById('pause-menu').style.display = 'none';
+        if (AudioEngine.ctx) await AudioEngine.ctx.resume();
+    }
+}
+
+function quitToMenu() {
+    isPaused = false;
+    isPlaying = false;
+    document.getElementById('pause-menu').style.display = 'none';
+    document.getElementById('results-screen').style.display = 'none';
+    
+    if (bgmSource) {
+        try { bgmSource.stop(); } catch(e){}
+    }
+    // Ensure context is running for next time
+    if (AudioEngine.ctx && AudioEngine.ctx.state === 'suspended') AudioEngine.ctx.resume();
+
+    // Reset Visuals
+    while(notesGroup.children.length > 0) notesGroup.remove(notesGroup.children[0]);
+    activeFlames.forEach(f => { f.mesh.visible = false; flamePool.push(f.mesh); });
+    activeFlames = [];
+    setThunderVisuals(false); // Reset here too
+    
+    document.getElementById('main-menu').style.display = 'flex';
+}
 
 // --- UI / Navigation Handlers ---
 
@@ -1493,6 +1568,8 @@ document.getElementById('btn-back-main').addEventListener('click', () => {
 const closeAdd = () => document.getElementById('add-song-modal').style.display = 'none';
 document.getElementById('btn-close-add').addEventListener('click', closeAdd);
 document.getElementById('btn-browse').addEventListener('click', () => document.getElementById('file-input').click());
+document.getElementById('btn-resume').addEventListener('click', togglePause);
+document.getElementById('btn-quit').addEventListener('click', quitToMenu);
 
 const dropZone = document.getElementById('drop-zone');
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
@@ -1525,6 +1602,13 @@ function handleInput(lane, isDown) {
 }
 
 window.addEventListener('keydown', e => { 
+    if (e.code === 'Escape') {
+        togglePause();
+        e.preventDefault();
+        return;
+    }
+    if (isPaused) return;
+
     if (e.code === 'Space') {
         activateThunder();
         e.preventDefault();
