@@ -356,8 +356,8 @@
             gap: 15px;
         }
 
-        /* Library List */
-        #library-view {
+        /* Career & Library View Shared Styles */
+        #career-view, #library-view {
             display: none;
             flex-direction: column;
             align-items: center;
@@ -381,6 +381,30 @@
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
         }
 
+        /* Career Stats */
+        #career-stats-container {
+            width: 90%;
+            max-width: 600px;
+            background: rgba(20, 20, 20, 0.9);
+            border: 2px solid #ff00ff;
+            padding: 30px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
+        }
+
+        .career-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .career-label { color: #aaa; }
+        .career-val { color: #fff; text-shadow: 0 0 5px #fff; }
+        
         .song-item {
             background: #111;
             border: 1px solid #333;
@@ -421,6 +445,11 @@
         .song-source {
             font-size: 10px;
             color: #888;
+        }
+        .song-score {
+            font-size: 10px;
+            color: #ffd700;
+            margin-top: 4px;
         }
 
         /* Add Song Modal */
@@ -535,12 +564,33 @@
         <h1>WCL HERO</h1>
         <div id="main-menu-container">
             <button class="btn" id="btn-open-library">Library</button>
+            <button class="btn" id="btn-open-career">Career</button>
             <button class="btn" id="btn-open-add">Add Songs</button>
         </div>
         <div style="margin-top: 40px; font-size: 12px; color: #aaa; text-align:center; text-shadow: 1px 1px 0 #000;">
             KEYS: D F J K L <br><br>
             <span style="color:#0ff">SPACE FOR THUNDER</span>
         </div>
+    </div>
+
+    <!-- Career View -->
+    <div id="career-view" class="overlay-screen">
+        <h2 style="margin-top: 20px; color: #f0f; text-shadow: 0 0 10px #f0f;">CAREER STATS</h2>
+        <div id="career-stats-container">
+            <div class="career-row">
+                <span class="career-label">TOTAL SCORE</span>
+                <span class="career-val" id="career-total-score">0</span>
+            </div>
+            <div class="career-row">
+                <span class="career-label">TOTAL NOTES HIT</span>
+                <span class="career-val" id="career-total-notes">0</span>
+            </div>
+            <div class="career-row">
+                <span class="career-label">SONGS PLAYED</span>
+                <span class="career-val" id="career-total-games">0</span>
+            </div>
+        </div>
+        <button class="btn" id="btn-back-career" style="margin-bottom: 20px; border-color: #fff; color: #fff;">Back</button>
     </div>
 
     <!-- Library View -->
@@ -626,12 +676,66 @@ const SERVER_SONGS = [
     "Throughthefire.zip"
 ];
 
+// --- Save System (Career) ---
+const SaveSystem = {
+    STORAGE_KEY: 'wcl_hero_data_v1',
+    data: {
+        totalScore: 0,
+        totalNotesHit: 0,
+        songsPlayed: 0,
+        scores: {} // map of songTitle -> { score, stars, grade, percent }
+    },
+    
+    init: function() {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        if(stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                // Merge data to ensure compatibility
+                this.data = { ...this.data, ...parsed };
+            } catch(e) {
+                console.warn("Save file corrupted or invalid format.");
+            }
+        }
+    },
+    
+    save: function() {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.data));
+    },
+    
+    recordGame: function(songName, score, hitCount, totalNotes, grade, stars) {
+        this.data.totalScore += score;
+        this.data.totalNotesHit += hitCount;
+        this.data.songsPlayed++;
+        
+        // Update High Score if better
+        if (!this.data.scores[songName] || score > this.data.scores[songName].score) {
+            this.data.scores[songName] = {
+                score: score,
+                stars: stars,
+                grade: grade,
+                percent: Math.floor((hitCount / totalNotes) * 100)
+            };
+        }
+        
+        this.save();
+    },
+    
+    getSongStats: function(songName) {
+        return this.data.scores[songName] || null;
+    }
+};
+
+// Initialize Save System immediately
+SaveSystem.init();
+
 // Game State
 let isPlaying = false;
 let isPaused = false;
 let score = 0, combo = 0, maxCombo = 0, multiplier = 1;
 let songData = [], totalNotesInSong = 0, notesHitCount = 0;
 let activeNoteStartIndex = 0; // Optimization: Sliding Window
+let currentSongName = ""; // To track for saving
 let audioCtx, bgmSource, bgmBuffer, bgmStartTime = 0, songOffset = 0;
 let gameLoopId;
 
@@ -869,10 +973,24 @@ const LibraryManager = {
 
         info.appendChild(title);
         info.appendChild(source);
+
+        // --- High Score Integration ---
+        const savedStats = SaveSystem.getSongStats(song.name);
+        if (savedStats) {
+            const scoreDiv = document.createElement('div');
+            scoreDiv.className = 'song-score';
+            let starStr = "";
+            for(let i=0; i<5; i++) starStr += (i < (savedStats.stars || 0) ? "★" : "☆");
+            scoreDiv.innerText = `${starStr} ${savedStats.score.toLocaleString()}`;
+            info.appendChild(scoreDiv);
+        }
+        // -----------------------------
+
         el.appendChild(thumb);
         el.appendChild(info);
         
         el.onclick = () => {
+            currentSongName = song.name;
             this.playSong(song.zip, song.art);
         };
         return el;
@@ -1313,6 +1431,11 @@ function endGame() {
     else if (percent >= 70) { starCount = 3; grade = "C"; }
     else if (percent >= 60) { starCount = 2; grade = "D"; }
     else if (percent >= 40) { starCount = 1; grade = "E"; }
+    
+    // --- Save Game ---
+    SaveSystem.recordGame(currentSongName, score, notesHitCount, totalNotesInSong, grade, starCount);
+    // -----------------
+
     let starStr = "";
     for(let i=0; i<5; i++) starStr += (i < starCount ? "★" : "☆");
     document.getElementById('res-score').innerText = score;
@@ -1551,6 +1674,20 @@ function quitToMenu() {
     document.getElementById('main-menu').style.display = 'flex';
 }
 
+function openCareer() {
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('career-view').style.display = 'flex';
+    
+    document.getElementById('career-total-score').innerText = SaveSystem.data.totalScore.toLocaleString();
+    document.getElementById('career-total-notes').innerText = SaveSystem.data.totalNotesHit.toLocaleString();
+    document.getElementById('career-total-games').innerText = SaveSystem.data.songsPlayed.toLocaleString();
+}
+
+function closeCareer() {
+    document.getElementById('career-view').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+}
+
 // --- UI / Navigation Handlers ---
 
 document.getElementById('btn-open-library').addEventListener('click', () => {
@@ -1558,6 +1695,9 @@ document.getElementById('btn-open-library').addEventListener('click', () => {
     document.getElementById('library-view').style.display = 'flex';
     LibraryManager.loadLibraryView();
 });
+document.getElementById('btn-open-career').addEventListener('click', openCareer);
+document.getElementById('btn-back-career').addEventListener('click', closeCareer);
+
 document.getElementById('btn-open-add').addEventListener('click', () => {
     document.getElementById('add-song-modal').style.display = 'flex';
 });
