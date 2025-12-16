@@ -105,7 +105,8 @@
         /* Desktop Mode Styles */
         @media (min-width: 800px) {
             #game-canvas-container {
-                width: 600px;
+                width: 100%;
+                max-width: 600px;
                 border-left: 4px solid #333;
                 border-right: 4px solid #333;
                 box-shadow: 0 0 50px rgba(0,0,0,0.8);
@@ -1291,6 +1292,9 @@ function initGraphics() {
         line.position.set(x, 0.01, -500);
         fretBoardGroup.add(line);
     }
+    
+    const keyLabels = ['D', 'F', 'J', 'K', 'L'];
+    
     for(let i=0; i<LANES; i++) {
         const x = ((i + 0.5) * LANE_WIDTH) - ((LANES * LANE_WIDTH) / 2);
         const ringGeo = new THREE.RingGeometry(0.4, 0.5, 4);
@@ -1308,7 +1312,54 @@ function initGraphics() {
         hitMarkers.push({ ring, fill });
         fretBoardGroup.add(ring);
         fretBoardGroup.add(fill);
+        
+        // Add Key Label
+        const labelTex = createTextTexture(keyLabels[i]);
+        const labelGeo = new THREE.PlaneGeometry(0.6, 0.6);
+        const labelMat = new THREE.MeshBasicMaterial({ map: labelTex, transparent: true });
+        const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+        labelMesh.rotation.x = -Math.PI / 2;
+        labelMesh.position.set(x, 0.02, 1.2); // Positioned below the hit marker
+        fretBoardGroup.add(labelMesh);
     }
+    
+    // Initial Camera Adjustment
+    resizeCamera();
+}
+
+function createTextTexture(text) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.font = 'bold 80px "Press Start 2P", monospace';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'black';
+    ctx.shadowBlur = 4;
+    ctx.fillText(text, 64, 64);
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+function resizeCamera() {
+    const container = document.getElementById('game-canvas-container');
+    if (!container || !camera || !renderer) return;
+    
+    const aspect = container.clientWidth / container.clientHeight;
+    camera.aspect = aspect;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+
+    // Adjust camera Z position to ensure board fits horizontally
+    // Base width required ~ 7.0 units
+    const requiredWidth = 7.0;
+    // Visible width = 2 * dist * tan(fov/2) * aspect
+    // dist = requiredWidth / (2 * tan(fov/2) * aspect)
+    // tan(35deg) approx 0.7002
+    const dist = requiredWidth / (2 * 0.7002 * aspect);
+    camera.position.z = Math.max(6, dist);
 }
 
 function createNoteMesh(lane) {
@@ -1764,12 +1815,7 @@ tArea.addEventListener('touchend', () => { const els = document.querySelectorAll
 
 StormSystem.init();
 initGraphics();
-window.addEventListener('resize', () => {
-    const container = document.getElementById('game-canvas-container');
-    camera.aspect = container.clientWidth / container.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-});
+window.addEventListener('resize', resizeCamera);
 
 </script>
 </body>
